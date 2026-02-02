@@ -466,14 +466,14 @@ app.post('/api/config', (req, res) => {
 });
 
 app.get('/api/overlays', (req, res) => {
-  const data = loadOverlays();
+  const data = getOverlays();
   res.json({ overlays: data });
 });
 
 app.delete('/api/overlays/:id', (req, res) => {
   try {
     const { id } = req.params;
-    let data = loadOverlays();
+    let data = getOverlays();
     const initialLength = data.length;
     data = data.filter(o => o.id !== id);
 

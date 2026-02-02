@@ -7,6 +7,11 @@ let streamStartTime = null;
 let mediaRecorder = null;
 let streamTracks = null;
 
+// Wizard State
+let wizardStep = 1;
+let wizardSelectedVideo = null;
+let wizardSelectedOverlay = null;
+
 const navItems = document.querySelectorAll('.nav-item');
 const views = document.querySelectorAll('.view');
 const viewTitle = document.getElementById('viewTitle');
