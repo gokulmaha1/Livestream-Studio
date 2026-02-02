@@ -180,16 +180,17 @@ class StreamSession {
       this.log('Launching Browser (Linux/Xvfb Config)...');
 
       this.browser = await launch({
-        executablePath: puppeteer.executablePath(),
+        executablePath: '/usr/bin/google-chrome', // Use system Chrome (more stable for extensions)
         headless: false, // Required for extension (works with Xvfb)
         defaultViewport: null, // Critical for extension sizing
-        ignoreDefaultArgs: ['--mute-audio'],
+        ignoreDefaultArgs: ['--mute-audio', '--enable-automation'], // Hide automation bar
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-infobars',
           '--window-size=1920,1080',
           '--start-fullscreen',
+          '--disable-blink-features=AutomationControlled', // Mask automation
           '--autoplay-policy=no-user-gesture-required',
           '--use-fake-ui-for-media-stream',
           '--use-fake-device-for-media-stream',
