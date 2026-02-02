@@ -185,6 +185,33 @@ async function loadSavedConfig() {
     } catch (e) { console.error('Failed to load config', e); }
 }
 
+async function loadStreamStatus() {
+    try {
+        const res = await fetch('/api/streams');
+        const data = await res.json();
+        if (data.streams && data.streams.length > 0) {
+            // Restore session
+            const stream = data.streams[0];
+            currentStreamSession = stream.id;
+
+            // Adjust start time based on uptime
+            // stream.uptime is ms elapsed
+            streamStartTime = Date.now() - stream.uptime;
+
+            updateStreamStatus('live');
+            startStopBtn.textContent = 'Stop Stream';
+            startStopBtn.classList.remove('btn-primary');
+            startStopBtn.classList.add('btn-secondary');
+            startUptimeCounter();
+
+            // Join socket room
+            socket.emit('join-stream', currentStreamSession);
+
+            // If we are in wizard, close it? No, user might be on dashboard
+        }
+    } catch (e) { console.error('Failed to load stream status', e); }
+}
+
 async function saveStreamConfig() {
     const config = {
         streamKey: document.getElementById('streamKey').value,
@@ -196,12 +223,7 @@ async function saveStreamConfig() {
     showToast('Configuration saved successfully', 'success');
 }
 
-function loadSavedConfig() {
-    const saved = localStorage.getItem('streamConfig');
-    const savedKey = localStorage.getItem('streamKey');
-    if (saved) { try { const c = JSON.parse(saved); if (c.resolution) resolutionSelect.value = c.resolution; if (c.framerate) framerateSelect.value = c.framerate; if (c.bitrate) bitrateSelect.value = c.bitrate; if (c.preset) presetSelect.value = c.preset; } catch (e) { } }
-    if (savedKey) streamKeyInput.value = savedKey;
-}
+// function loadSavedConfig() { ... } // Replaced by async version above
 
 // Overlay Editor
 function initOverlayEditor() {
@@ -386,7 +408,19 @@ async function loadWizardMedia() {
         const res = await fetch('/api/media');
         const data = await res.json();
         wizardMediaGrid.innerHTML = '';
-        data.files.filter(f => f.type === 'video').forEach(file => {
+        const videos = data.files.filter(f => f.type === 'video');
+
+        if (videos.length === 0) {
+            wizardMediaGrid.innerHTML = `
+                <div style="grid-column: 1/-1; text-align: center; padding: 20px;">
+                    <p style="color: #aaa; margin-bottom: 20px;">No videos found in your library.</p>
+                    <button class="btn btn-primary" onclick="closeWizardAndGoToMedia()">📂 Go to Media Library & Upload</button>
+                </div>
+            `;
+            return;
+        }
+
+        videos.forEach(file => {
             const card = document.createElement('div');
             card.className = 'overlay-card';
             if (wizardSelectedVideo && wizardSelectedVideo.url === file.url) card.style.borderColor = 'var(--primary-color)';
@@ -402,6 +436,11 @@ async function loadWizardMedia() {
             wizardMediaGrid.appendChild(card);
         });
     } catch (e) { }
+}
+
+function closeWizardAndGoToMedia() {
+    wizardModal.classList.remove('active');
+    switchView('media');
 }
 
 async function loadWizardOverlays() {
@@ -745,9 +784,14 @@ function updateSelectedFromProps() {
         selectedElement.style.fontSize = document.getElementById('propFontSize').value + 'px';
         selectedElement.style.color = document.getElementById('propColor').value;
     } else if (selectedElement.dataset.type === 'html') {
-        const val = document.getElementById('propContent').value;
-        if (val.startsWith('http')) {
-            selectedElement.innerHTML = `<iframe src="${val}" style="width:100%;height:100%;border:none;"></iframe>`;
+        const val = document.getElementById('propContent').value.trim();
+        // Check if it's a URL (http, https, or starts with www. or ends with common domains like .com, .net)
+        const isUrl = val.startsWith('http') || val.startsWith('www.') || val.match(/\.(com|net|org|io|in)\/?$/);
+
+        if (isUrl) {
+            let url = val;
+            if (!url.startsWith('http')) url = 'https://' + url;
+            selectedElement.innerHTML = `<iframe src="${url}" style="width:100%;height:100%;border:none;pointer-events:none;"></iframe>`;
         } else {
             selectedElement.innerHTML = val;
         }
