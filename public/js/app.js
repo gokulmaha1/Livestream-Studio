@@ -274,9 +274,19 @@ function initPreviewCanvas() {
     const canvas = document.getElementById('previewCanvas');
     const ctx = canvas.getContext('2d');
     canvas.width = 1920; canvas.height = 1080;
-    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#fff'; ctx.font = '48px Arial'; ctx.textAlign = 'center';
-    ctx.fillText('Stream Preview', canvas.width / 2, canvas.height / 2);
+
+    // Initial State
+    ctx.fillStyle = '#111'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#333'; ctx.font = '48px Arial'; ctx.textAlign = 'center';
+    ctx.fillText('Waiting for stream...', canvas.width / 2, canvas.height / 2);
+
+    socket.on('preview-frame', (base64Image) => {
+        const img = new Image();
+        img.onload = () => {
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        };
+        img.src = 'data:image/jpeg;base64,' + base64Image;
+    });
 }
 
 // Socket Events
@@ -299,7 +309,37 @@ function showToast(message, type = 'success') {
 document.getElementById('addOverlayBtn').addEventListener('click', () => { switchView('overlays'); setTimeout(() => createOverlayBtn.click(), 100); });
 document.getElementById('settingsBtn').addEventListener('click', () => switchView('stream'));
 
-// --- Visual Stream Designer Logic ---
+// Logs
+const logsContent = document.getElementById('logsContent');
+document.getElementById('clearLogsBtn').addEventListener('click', () => logsContent.innerHTML = '');
+
+function addLog(message, type = 'info') {
+    const entry = document.createElement('div');
+    entry.className = `log-entry ${type}`;
+    const time = new Date().toLocaleTimeString();
+    entry.innerHTML = `<span class="timestamp">[${time}]</span>${message}`;
+    logsContent.appendChild(entry);
+    logsContent.scrollTop = logsContent.scrollHeight;
+}
+
+// Socket Events
+socket.on('stream-stats', (stats) => { fpsValue.textContent = stats.fps || 0; bitrateValue.textContent = `${stats.bitrate || 0} kbps`; });
+socket.on('stream-ended', () => {
+    updateStreamStatus('offline');
+    currentStreamSession = null;
+    stopUptimeCounter();
+    startStopBtn.textContent = 'Start Stream';
+    startStopBtn.classList.remove('btn-secondary');
+    startStopBtn.classList.add('btn-primary');
+    addLog('Stream ended', 'warn');
+});
+socket.on('stream-error', (data) => {
+    showToast(`Stream error: ${data.error}`, 'error');
+    addLog(`Stream Error: ${data.error}`, 'error');
+});
+socket.on('server-log', (data) => {
+    addLog(data.message, data.type);
+});
 const streamDesignerModal = document.getElementById('streamDesignerModal');
 const designerCanvas = document.getElementById('designerCanvas');
 const designerWorkspace = document.getElementById('designerWorkspace');
@@ -534,13 +574,26 @@ async function loadMedia(gridElement = mediaGrid, isSelector = false) {
                     mediaSelectorModal.classList.remove('active');
                 };
             } else {
-                card.innerHTML = `${preview}<p style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${file.name}</p>`;
+                card.innerHTML = `
+                    ${preview}
+                    <div style="display:flex; justify-content:space-between; align-items:center">
+                        <p style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px">${file.name}</p>
+                        ${file.type === 'video' ? `<button class="btn btn-small btn-success" style="padding:2px 8px; font-size:10px" onclick="streamVideo('${file.url}', '${file.name}')">▶ Stream</button>` : ''}
+                    </div>
+                `;
             }
 
             gridElement.appendChild(card);
         });
     } catch (e) { console.error(e); }
 }
+
+window.streamVideo = function (url, name) {
+    if (confirm(`Stream this video: ${name}?`)) {
+        socket.emit('stream-video', { url, name });
+        showToast('Video switched!', 'success');
+    }
+};
 
 async function uploadMedia() {
     const file = mediaUploadInput.files[0];

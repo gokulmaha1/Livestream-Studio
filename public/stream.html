@@ -1,19 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0">
     <title>Stream Compositor</title>
     <style>
-        body { margin: 0; padding: 0; overflow: hidden; background: #000; width: 1920px; height: 1080px; }
-        #bgVideo {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1;
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #000;
+            width: 1920px;
+            height: 1080px;
         }
+
+        #bgVideo {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1;
+        }
+
         #overlayContainer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
         }
     </style>
 </head>
+
 <body>
     <video id="bgVideo" loop autoplay muted>
         <source src="/assets/background.mp4" type="video/mp4">
@@ -36,7 +59,7 @@
                 const data = await res.json();
                 if (data.overlays.length > 0) {
                     // Use the most recently updated overlay
-                    const overlay = data.overlays.sort((a,b) => b.updatedAt - a.updatedAt)[0];
+                    const overlay = data.overlays.sort((a, b) => b.updatedAt - a.updatedAt)[0];
                     renderOverlay(overlay);
                 }
             } catch (e) { console.error("Failed to load overlay", e); }
@@ -48,7 +71,7 @@
             const style = document.createElement('style');
             style.id = 'overlayStyles';
             style.textContent = overlay.css;
-            
+
             const content = document.createElement('div');
             content.id = 'overlayContent';
             content.innerHTML = overlay.html;
@@ -58,7 +81,7 @@
                 const script = document.createElement('script');
                 script.textContent = overlay.js;
                 document.body.appendChild(script);
-            } catch(e) {}
+            } catch (e) { }
 
             container.innerHTML = '';
             document.head.appendChild(style);
@@ -69,10 +92,17 @@
             renderOverlay(overlay);
         });
 
+        socket.on('video-change', (data) => {
+            console.log("Changing video to", data.url);
+            video.src = data.url;
+            video.play().catch(e => console.error(e));
+        });
+
         // Ensure video plays
         video.play().catch(e => console.log("Autoplay blocked/failed", e));
 
         loadOverlay();
     </script>
 </body>
+
 </html>

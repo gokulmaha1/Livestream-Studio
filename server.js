@@ -104,6 +104,13 @@ class StreamSession {
     this.startTime = null;
     this.stats = { fps: 0, bitrate: 0 };
     this.stream = null;
+    this.page = null; // Store page reference
+    this.previewInterval = null;
+  }
+
+  log(message, type = 'info') {
+    console.log(`[${this.id}] ${message}`);
+    io.emit('server-log', { message: `[Server] ${message}`, type });
   }
 
   async start() {
@@ -111,7 +118,7 @@ class StreamSession {
 
     try {
       this.status = 'starting';
-      console.log('Launching Browser (Linux/Xvfb Config)...');
+      this.log('Launching Browser (Linux/Xvfb Config)...');
 
       this.browser = await launch({
         executablePath: puppeteer.executablePath(),
@@ -129,11 +136,11 @@ class StreamSession {
         ]
       });
 
-      const page = await this.browser.newPage();
-      await page.setViewport({ width: 1920, height: 1080 });
+      this.page = await this.browser.newPage();
+      await this.page.setViewport({ width: 1920, height: 1080 });
 
-      console.log('Navigating to compositor...');
-      await page.goto(`http://localhost:${PORT}/stream.html`, { waitUntil: 'load', timeout: 60000 });
+      this.log('Navigating to compositor...');
+      await this.page.goto(`http://localhost:${PORT}/stream.html`, { waitUntil: 'load', timeout: 60000 });
 
       // Bring to front and click to ensure audio context is active
       await page.bringToFront();
@@ -145,7 +152,7 @@ class StreamSession {
       } catch (e) { }
 
       // Get Stream from Puppeteer (Audio + Video)
-      console.log('Capturing stream with Audio...');
+      this.log('Capturing stream with Audio...');
       this.stream = await getStream(page, {
         audio: true,
         video: true,
@@ -155,7 +162,7 @@ class StreamSession {
 
       // Start FFmpeg
       const args = this.buildFFmpegArgs();
-      console.log(`Spawning FFmpeg from: ${ffmpegPath}`);
+      this.log(`Spawning FFmpeg from: ${ffmpegPath}`);
       this.ffmpegProcess = spawn(ffmpegPath, args);
 
       // Pipe Puppeteer stream to FFmpeg
@@ -164,12 +171,18 @@ class StreamSession {
       this.status = 'streaming';
       this.startTime = Date.now();
       this.setupFFmpegHandlers();
+      this.startPreview(); // Start generating preview frames
 
       // Clean up browser on ffmpeg exit
-      this.ffmpegProcess.on('exit', () => this.stop());
+      this.ffmpegProcess.on('exit', (code) => {
+        if (code !== 0) {
+          this.log(`FFmpeg exited with code ${code}`, 'error');
+        }
+        this.stop();
+      });
 
     } catch (error) {
-      console.error('Start error:', error);
+      this.log(`Start error: ${error.message}`, 'error');
       this.stop();
       throw error;
     }
@@ -232,6 +245,7 @@ class StreamSession {
 
   async stop() {
     this.status = 'stopped';
+    this.stopPreview();
 
     if (this.stream) {
       this.stream.destroy();
@@ -249,6 +263,33 @@ class StreamSession {
     }
 
     io.to(this.id).emit('stream-ended', { status: 'stopped' });
+  }
+
+  startPreview() {
+    if (this.previewInterval) clearInterval(this.previewInterval);
+    // Take a screenshot every 2 seconds for preview
+    this.previewInterval = setInterval(async () => {
+      if (this.page && this.status === 'streaming') {
+        try {
+          const screenshot = await this.page.screenshot({
+            type: 'jpeg',
+            quality: 50,
+            encoding: 'base64',
+            clip: { x: 0, y: 0, width: 1920, height: 1080 } // Ensure full frame
+          });
+          io.emit('preview-frame', screenshot);
+        } catch (e) {
+          // Ignore errors (page might be closing)
+        }
+      }
+    }, 2000);
+  }
+
+  stopPreview() {
+    if (this.previewInterval) {
+      clearInterval(this.previewInterval);
+      this.previewInterval = null;
+    }
   }
 
   getStatus() {
@@ -365,6 +406,13 @@ io.on('connection', (socket) => {
   socket.on('update-overlay', (data) => {
     const { sessionId, overlay } = data;
     io.to(sessionId).emit('overlay-updated', overlay);
+  });
+
+  socket.on('stream-video', (data) => {
+    // Broadcast to all clients (including the puppeteer page)
+    io.emit('video-change', data);
+    console.log('Switching video to:', data.url);
+    io.emit('server-log', { message: `Switching video: ${data.name || 'External'}`, type: 'info' });
   });
 
   socket.on('stream-data', ({ sessionId, chunk }) => {

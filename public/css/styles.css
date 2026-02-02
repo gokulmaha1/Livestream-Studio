@@ -760,3 +760,43 @@ body {
     display: flex;
     height: 100%;
 }
+
+.logs-panel {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 20px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    max-height: 300px;
+}
+
+.logs-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.logs-content {
+    background: #0f172a;
+    border-radius: 6px;
+    padding: 10px;
+    height: 200px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 13px;
+    border: 1px solid var(--border-color);
+}
+
+.log-entry {
+    padding: 4px 0;
+    border-bottom: 1px solid #1e293b;
+    color: #e2e8f0;
+}
+
+.log-entry.error { color: #ef4444; }
+.log-entry.warn { color: #f59e0b; }
+.log-entry.success { color: #22c55e; }
+.log-entry .timestamp { color: #64748b; margin-right: 8px; }
