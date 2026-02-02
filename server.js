@@ -148,8 +148,7 @@ function saveOverlays(overlays) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(overlays, null, 2));
 }
 
-// Puppeteer Stream implementation (Supports Audio + Video)
-const { launch, getStream } = require('puppeteer-stream');
+// Native FFmpeg X11Grab implementation
 const puppeteer = require('puppeteer');
 const ffmpegPath = require('ffmpeg-static');
 
@@ -177,29 +176,23 @@ class StreamSession {
 
     try {
       this.status = 'starting';
-      this.log('Launching Browser (Linux/Xvfb Config)...');
+      this.log('Launching Browser (Native X11 Mode)...');
 
-      this.browser = await launch({
-        executablePath: '/usr/bin/google-chrome', // Use system Chrome (more stable for extensions)
-        headless: false, // Required for extension (works with Xvfb)
-        defaultViewport: null, // Critical for extension sizing
-        ignoreDefaultArgs: ['--mute-audio', '--enable-automation'], // Hide automation bar
+      // Launch standard Puppeteer (no extension needed)
+      this.browser = await puppeteer.launch({
+        executablePath: '/usr/bin/google-chrome',
+        headless: false, // Visible on Xvfb
+        defaultViewport: null,
+        ignoreDefaultArgs: ['--mute-audio', '--enable-automation'],
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-infobars',
           '--window-size=1920,1080',
           '--start-fullscreen',
-          '--disable-blink-features=AutomationControlled', // Mask automation
+          '--kiosk', // Force kiosk mode
           '--autoplay-policy=no-user-gesture-required',
-          '--use-fake-ui-for-media-stream',
-          '--use-fake-device-for-media-stream',
-          '--disable-features=IsolateOrigins,site-per-process',
-          '--disable-background-timer-throttling',
-          '--disable-backgrounding-occluded-windows',
-          '--disable-renderer-backgrounding',
-          '--enable-usermedia-screen-capturing',
-          '--allow-http-screen-capture'
+          '--disable-notifications'
         ]
       });
 
@@ -215,29 +208,19 @@ class StreamSession {
 
       // Bring to front and click to ensure audio context is active
       await this.page.bringToFront();
-      console.log('Waiting for extension to initialize (2s)...');
-      await new Promise(r => setTimeout(r, 2000));
 
-      try {
-        await this.page.evaluate(() => document.body.click());
-      } catch (e) { }
+      // No need to wait for extension or getStream()
 
-      // Get Stream from Puppeteer (Audio + Video)
-      this.log('Capturing stream with Audio...');
-      this.stream = await getStream(this.page, {
-        audio: true,
-        video: true,
-        frameSize: 1000,
-        mimeType: 'video/webm'
-      });
-
-      // Start FFmpeg
+      // Start FFmpeg directly grabbing Display :99
+      this.log('Starting FFmpeg X11Grab...');
       const args = this.buildFFmpegArgs();
       this.log(`Spawning FFmpeg from: ${ffmpegPath}`);
       this.ffmpegProcess = spawn(ffmpegPath, args);
 
-      // Pipe Puppeteer stream to FFmpeg
-      this.stream.pipe(this.ffmpegProcess.stdin);
+      // FFmpeg logs
+      this.ffmpegProcess.stderr.on('data', (data) => {
+        // console.log(`FFmpeg: ${data}`); // Optional: verbose logs
+      });
 
       this.status = 'streaming';
       this.startTime = Date.now();
@@ -246,7 +229,7 @@ class StreamSession {
 
       // Clean up browser on ffmpeg exit
       this.ffmpegProcess.on('exit', (code) => {
-        if (code !== 0) {
+        if (code !== 0 && code !== 255) { // 255 is normal kill signal
           this.log(`FFmpeg exited with code ${code}`, 'error');
         }
         this.stop();
@@ -255,7 +238,7 @@ class StreamSession {
     } catch (error) {
       const errorMsg = error.message || (typeof error === 'string' ? error : JSON.stringify(error));
       this.log(`Start error: ${errorMsg}`, 'error');
-      console.error(error); // Print full stack to server console logs
+      console.error(error);
       this.stop();
       throw error;
     }
@@ -272,16 +255,19 @@ class StreamSession {
       preset = 'veryfast'
     } = this.config;
 
-    // Puppeteer stream output (webm) -> FFmpeg Input
     return [
-      '-re',
-      '-i', '-', // Input from stdin (pipe)
+      // 1. VIDEO INPUT: X11Grab (Display :99)
+      '-f', 'x11grab',
+      '-draw_mouse', '0',
+      '-s', '1920x1080',
+      '-framerate', String(framerate),
+      '-i', ':99', // Capture Xvfb display directly
 
-      // Input decoding (WebM/VP8/VP9 from puppeteer-stream)
-      '-f', 'webm',
-      '-vcodec', 'libvpx', // Ensure decoder matches
+      // 2. AUDIO INPUT: Silent Audio (for now)
+      '-f', 'lavfi',
+      '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100',
 
-      // Transcode to YouTube settings
+      // 3. ENCODING
       '-c:v', 'libx264',
       '-preset', preset,
       '-tune', 'zerolatency',
@@ -291,13 +277,13 @@ class StreamSession {
       '-bufsize', String(parseInt(bitrate) * 2),
       '-pix_fmt', 'yuv420p',
       '-g', String(framerate * 2),
-      '-r', String(framerate),
 
       '-c:a', 'aac',
       '-b:a', '128k',
       '-ar', '44100',
       '-ac', '2',
 
+      // 4. OUTPUT: FLV (RTMP)
       '-f', 'flv',
       `rtmp://a.rtmp.youtube.com/live2/${streamKey}`
     ];
