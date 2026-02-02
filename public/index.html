@@ -336,6 +336,48 @@
 
     <div class="toast-container" id="toastContainer"></div>
 
+    <!-- Stream Setup Wizard Modal -->
+    <div class="modal" id="streamWizardModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🚀 New Stream Setup</h3>
+                <button class="close-btn" id="closeWizardBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Step 1: Media -->
+                <div class="wizard-step active" id="wizardStep1">
+                    <h4 style="margin-bottom:15px">Step 1: Choose Background Video</h4>
+                    <div class="overlays-grid" id="wizardMediaGrid"
+                        style="height:300px; overflow-y:auto; display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:15px;">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Step 2: Overlay -->
+                <div class="wizard-step" id="wizardStep2" style="display:none">
+                    <h4 style="margin-bottom:15px">Step 2: Choose Overlay Scene</h4>
+                    <div class="overlays-grid" id="wizardOverlayGrid"
+                        style="height:300px; overflow-y:auto; display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:15px;">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Step 3: Confirm -->
+                <div class="wizard-step" id="wizardStep3" style="display:none; text-align:center; padding:40px;">
+                    <h2>Ready to Go Live?</h2>
+                    <div id="wizardSummary"
+                        style="margin:20px 0; color:#aaa; text-align:left; background:#111; padding:20px; border-radius:8px; display:inline-block; width:100%; max-width:400px;">
+                        Loading summary...
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="wizardBackBtn" style="display:none">Back</button>
+                <button class="btn btn-primary" id="wizardNextBtn">Next</button>
+            </div>
+        </div>
+    </div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script src="js/app.js"></script>
 </body>

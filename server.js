@@ -176,9 +176,12 @@ class StreamSession {
           '--disable-infobars',
           '--window-size=1920,1080',
           '--autoplay-policy=no-user-gesture-required',
-          '--use-fake-ui-for-media-stream', // Auto-accept streams
+          '--use-fake-ui-for-media-stream',
           '--use-fake-device-for-media-stream',
-          '--disable-features=IsolateOrigins,site-per-process'
+          '--disable-features=IsolateOrigins,site-per-process',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding'
         ]
       });
 
@@ -437,8 +440,26 @@ app.get('/api/overlay/:id', (req, res) => {
 });
 
 app.get('/api/overlays', (req, res) => {
-  const overlays = getOverlays();
-  res.json({ overlays });
+  const data = loadOverlays();
+  res.json({ overlays: data });
+});
+
+app.delete('/api/overlays/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    let data = loadOverlays();
+    const initialLength = data.length;
+    data = data.filter(o => o.id !== id);
+
+    if (data.length === initialLength) {
+      return res.status(404).json({ error: 'Overlay not found' });
+    }
+
+    saveOverlays(data);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 io.on('connection', (socket) => {

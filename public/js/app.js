@@ -32,17 +32,23 @@ const saveOverlayBtn = document.getElementById('saveOverlay');
 const overlaysGrid = document.getElementById('overlaysGrid');
 
 document.addEventListener('DOMContentLoaded', () => {
-    initNavigation();
-    initStreamControls();
+    init();
+});
+
+// Init
+function init() {
+    setupNavigation();
+    setupStreamControls();
     initOverlayEditor();
     initMediaLibrary();
     loadSavedConfig();
     loadOverlays();
     initPreviewCanvas();
-});
+    loadStreamStatus(); // New
+}
 
 // Navigation
-function initNavigation() {
+function setupNavigation() { // Renamed from initNavigation
     navItems.forEach(item => {
         item.addEventListener('click', () => {
             switchView(item.dataset.view);
@@ -254,19 +260,196 @@ async function loadOverlays() {
         const response = await fetch('/api/overlays');
         const data = await response.json();
         overlaysGrid.innerHTML = '';
-        if (data.overlays.length === 0) { overlaysGrid.innerHTML = '<p style="color:var(--text-secondary)">No overlays yet. Create your first one!</p>'; return; }
+        if (data.overlays.length === 0) {
+            overlaysGrid.innerHTML = '<p style="color:var(--text-secondary)">No overlays created yet.</p>';
+            return;
+        }
+
         data.overlays.forEach(overlay => {
             const card = document.createElement('div');
             card.className = 'overlay-card';
-            card.innerHTML = `<h4>Overlay</h4><p>Updated: ${new Date(overlay.updatedAt).toLocaleString()}</p><div class="actions"><button class="btn btn-small btn-primary" onclick="editOverlay('${overlay.id}')">Edit</button></div>`;
+            card.innerHTML = `
+                <h4>Scene: ${new Date(Number(overlay.id.split('_')[1])).toLocaleString()}</h4>
+                <p>Contains ${overlay.html.split('stream-element').length - 1} elements</p>
+                <div class="actions">
+                    <button class="btn btn-small btn-primary" onclick="activateOverlay('${overlay.id}')">Apply Live</button>
+                    <button class="btn btn-small btn-secondary" onclick="deleteOverlay('${overlay.id}')">🗑️ Delete</button>
+                </div>
+            `;
             overlaysGrid.appendChild(card);
         });
     } catch (e) { console.error(e); }
 }
 
+window.deleteOverlay = async function (id) {
+    if (!confirm('Are you sure you want to delete this overlay?')) return;
+    try {
+        const res = await fetch(`/api/overlays/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+            showToast('Overlay deleted', 'success');
+            loadOverlays();
+        } else {
+            showToast('Failed to delete', 'error');
+        }
+    } catch (e) { console.error(e); }
+};
+
 async function editOverlay(id) {
     try { const r = await fetch(`/api/overlay/${id}`); openOverlayEditor(await r.json()); }
     catch (e) { showToast('Failed to load overlay', 'error'); }
+}
+
+// --- Wizard Logic ---
+const wizardModal = document.getElementById('streamWizardModal');
+const wizardBackBtn = document.getElementById('wizardBackBtn');
+const wizardNextBtn = document.getElementById('wizardNextBtn');
+const wizardStep1 = document.getElementById('wizardStep1');
+const wizardStep2 = document.getElementById('wizardStep2');
+const wizardStep3 = document.getElementById('wizardStep3');
+const wizardMediaGrid = document.getElementById('wizardMediaGrid');
+const wizardOverlayGrid = document.getElementById('wizardOverlayGrid');
+const wizardSummary = document.getElementById('wizardSummary');
+
+document.getElementById('closeWizardBtn').addEventListener('click', () => wizardModal.classList.remove('active'));
+
+function openStreamWizard() {
+    wizardModal.classList.add('active');
+    setWizardStep(1);
+    loadWizardMedia();
+    wizardSelectedVideo = null;
+    wizardSelectedOverlay = null;
+    wizardNextBtn.disabled = true; // Disable until selection
+}
+
+wizardBackBtn.addEventListener('click', () => setWizardStep(wizardStep - 1));
+wizardNextBtn.addEventListener('click', () => {
+    if (wizardStep === 3) { // Go Live
+        startStreamWithSettings();
+    } else {
+        setWizardStep(wizardStep + 1);
+    }
+});
+
+function setWizardStep(step) {
+    wizardStep = step;
+    wizardStep1.style.display = 'none';
+    wizardStep2.style.display = 'none';
+    wizardStep3.style.display = 'none';
+    wizardBackBtn.style.display = step > 1 ? 'block' : 'none';
+
+    if (step === 1) {
+        wizardStep1.style.display = 'block';
+        wizardNextBtn.textContent = 'Next';
+        wizardNextBtn.disabled = !wizardSelectedVideo;
+    } else if (step === 2) {
+        wizardStep2.style.display = 'block';
+        loadWizardOverlays();
+        wizardNextBtn.textContent = 'Next';
+        wizardNextBtn.disabled = false; // Overlay is optional
+    } else if (step === 3) {
+        wizardStep3.style.display = 'block';
+        wizardNextBtn.textContent = '🔴 Start Stream';
+        updateWizardSummary();
+    }
+}
+
+async function loadWizardMedia() {
+    try {
+        const res = await fetch('/api/media');
+        const data = await res.json();
+        wizardMediaGrid.innerHTML = '';
+        data.files.filter(f => f.type === 'video').forEach(file => {
+            const card = document.createElement('div');
+            card.className = 'overlay-card';
+            if (wizardSelectedVideo && wizardSelectedVideo.url === file.url) card.style.borderColor = 'var(--primary-color)';
+            card.innerHTML = `<video src="${file.url}" style="width:100%;height:100px;object-fit:cover"></video><p style="font-size:12px">${file.name}</p>`;
+            card.style.cursor = 'pointer';
+            card.onclick = () => {
+                wizardSelectedVideo = file;
+                // Highlight logic
+                Array.from(wizardMediaGrid.children).forEach(c => c.style.borderColor = 'var(--border-color)');
+                card.style.borderColor = 'var(--primary-color)';
+                wizardNextBtn.disabled = false;
+            };
+            wizardMediaGrid.appendChild(card);
+        });
+    } catch (e) { }
+}
+
+async function loadWizardOverlays() {
+    try {
+        const res = await fetch('/api/overlays');
+        const data = await res.json();
+        wizardOverlayGrid.innerHTML = '';
+
+        // Option key for 'None'
+        const noneCard = document.createElement('div');
+        noneCard.className = 'overlay-card';
+        noneCard.innerHTML = '<h4>🚫 No Overlay</h4>';
+        noneCard.style.cursor = 'pointer';
+        noneCard.onclick = () => {
+            wizardSelectedOverlay = null;
+            Array.from(wizardOverlayGrid.children).forEach(c => c.style.borderColor = 'var(--border-color)');
+            noneCard.style.borderColor = 'var(--primary-color)';
+        };
+        wizardOverlayGrid.appendChild(noneCard);
+
+        data.overlays.forEach(ov => {
+            const card = document.createElement('div');
+            card.className = 'overlay-card';
+            const name = `Scene ${new Date(Number(ov.id.split('_')[1])).toLocaleTimeString()}`;
+            if (wizardSelectedOverlay && wizardSelectedOverlay.id === ov.id) card.style.borderColor = 'var(--primary-color)';
+            card.innerHTML = `<h4>${name}</h4>`;
+            card.style.cursor = 'pointer';
+            card.onclick = () => {
+                wizardSelectedOverlay = ov;
+                // Highlight logic
+                Array.from(wizardOverlayGrid.children).forEach(c => c.style.borderColor = 'var(--border-color)');
+                card.style.borderColor = 'var(--primary-color)';
+            };
+            wizardOverlayGrid.appendChild(card);
+        });
+    } catch (e) { }
+}
+
+function updateWizardSummary() {
+    wizardSummary.innerHTML = `
+        <p><strong>Video:</strong> ${wizardSelectedVideo ? wizardSelectedVideo.name : 'Err'}</p>
+        <p><strong>Overlay:</strong> ${wizardSelectedOverlay ? 'Selected Scene' : 'None'}</p>
+    `;
+}
+
+async function startStreamWithSettings() {
+    wizardNextBtn.disabled = true;
+    wizardNextBtn.textContent = 'Starting...';
+
+    // 1. Start Stream Server
+    const success = await startStream();
+    if (!success) {
+        wizardNextBtn.disabled = false;
+        wizardNextBtn.textContent = '🔴 Start Stream';
+        return;
+    }
+
+    // 2. Wait a moment for server to be ready
+    setTimeout(() => {
+        // 3. Apply Video
+        if (wizardSelectedVideo) {
+            socket.emit('stream-video', wizardSelectedVideo);
+        }
+        // 4. Apply Overlay
+        if (wizardSelectedOverlay) {
+            // We need to implement a socket event for setting overlay by ID or data
+            // The existing logic uses /api/overlays sort order, but let's force it
+            // Actually currently valid logic relies on latest save.
+            // Ideally we emit 'apply-overlay'
+            // For now let's just use what we have, renderOverlay in stream.html works on 'overlay-updated'
+            socket.emit('overlay-updated', wizardSelectedOverlay);
+        }
+
+        wizardModal.classList.remove('active');
+        showToast('Stream is Live! 🚀', 'success');
+    }, 2000);
 }
 
 // Preview Canvas
