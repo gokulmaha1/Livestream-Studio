@@ -207,12 +207,16 @@ class StreamSession {
       await this.page.setViewport({ width: 1920, height: 1080 });
 
       this.log('Navigating to compositor...');
-      await this.page.goto(`http://localhost:${PORT}/stream.html`, { waitUntil: 'load', timeout: 60000 });
+      // Use 127.0.0.1 to avoid ipv6 issues in Docker
+      await this.page.goto(`http://127.0.0.1:${PORT}/stream.html`, { waitUntil: 'load', timeout: 60000 });
+
+      // Ensure page is actually loaded
+      await this.page.waitForSelector('body');
 
       // Bring to front and click to ensure audio context is active
       await this.page.bringToFront();
-      console.log('Waiting for extension to initialize (5s)...');
-      await new Promise(r => setTimeout(r, 5000));
+      console.log('Waiting for extension to initialize (2s)...');
+      await new Promise(r => setTimeout(r, 2000));
 
       try {
         await this.page.evaluate(() => document.body.click());
