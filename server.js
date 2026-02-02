@@ -168,7 +168,17 @@ class StreamSession {
   }
 
   log(message, type = 'info') {
-    console.log(`[${this.id}] ${message}`);
+    const timestamp = new Date().toISOString();
+    const logMsg = `[${timestamp}] [${this.id}] ${message}`;
+    console.log(logMsg);
+
+    // File Logging
+    try {
+      const logDir = path.join(__dirname, 'logs');
+      if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
+      fs.appendFileSync(path.join(logDir, 'debug.log'), logMsg + '\n');
+    } catch (e) { /* ignore log errors */ }
+
     io.emit('server-log', { message: `[Server] ${message}`, type });
   }
 
@@ -204,7 +214,7 @@ class StreamSession {
 
       // Debugging: Log browser console to server output
       this.page.on('console', msg => {
-        console.log(`[Browser Console] ${msg.type().toUpperCase()}: ${msg.text()}`);
+        this.log(`[Browser Console] ${msg.type().toUpperCase()}: ${msg.text()}`);
       });
 
       this.log('Navigating to compositor...');
