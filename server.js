@@ -150,7 +150,8 @@ function saveOverlays(overlays) {
 
 // Native FFmpeg X11Grab implementation
 const puppeteer = require('puppeteer');
-const ffmpegPath = require('ffmpeg-static');
+// const ffmpegPath = require('ffmpeg-static'); // Static binary lacks x11grab
+const ffmpegPath = 'ffmpeg'; // Use system ffmpeg installed via apt-get
 
 class StreamSession {
   constructor(id, config) {
@@ -214,12 +215,12 @@ class StreamSession {
       // Start FFmpeg directly grabbing Display :99
       this.log('Starting FFmpeg X11Grab...');
       const args = this.buildFFmpegArgs();
-      this.log(`Spawning FFmpeg from: ${ffmpegPath}`);
+      this.log(`Spawning FFmpeg via command: ${ffmpegPath}`);
       this.ffmpegProcess = spawn(ffmpegPath, args);
 
       // FFmpeg logs
       this.ffmpegProcess.stderr.on('data', (data) => {
-        // console.log(`FFmpeg: ${data}`); // Optional: verbose logs
+        console.log(`FFmpeg: ${data}`); // Enabled verbose logs
       });
 
       this.status = 'streaming';
