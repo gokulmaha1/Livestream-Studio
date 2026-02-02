@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  livestream-studio:
+    build: .
+    container_name: livestream-studio
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      # Add your environment variables here or use an env_file
+      # - STREAM_KEY=your_key_here
+    volumes:
+      # Persist data (overlays)
+      - ./data:/usr/src/app/data
+      # Persist uploaded media
+      - ./public/media:/usr/src/app/public/media
+      # Logs
+      - ./logs:/usr/src/app/logs
+    shm_size: '2gb' # Important for Chrome stability
