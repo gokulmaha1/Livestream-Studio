@@ -129,18 +129,35 @@ async function stopStream() {
         const response = await fetch(`/api/stream/stop/${currentStreamSession}`, { method: 'POST' });
         const data = await response.json();
         if (data.success) {
-            socket.emit('leave-stream', currentStreamSession);
-            currentStreamSession = null;
-            streamStartTime = null;
-            updateStreamStatus('offline');
-            startStopBtn.textContent = 'Start Stream';
-            startStopBtn.classList.remove('btn-secondary');
-            startStopBtn.classList.add('btn-primary');
-            stopUptimeCounter();
+            handleStreamEnded();
             showToast('Stream stopped', 'success');
+        } else {
+            // If server says stream not found, it's already dead. Force cleanup.
+            console.warn('Stream stop failed/not found:', data.error);
+            handleStreamEnded();
+            showToast('Stream forced stopped (was not found on server)', 'warning');
         }
-    } catch (error) { showToast(`Failed to stop stream: ${error.message}`, 'error'); }
-    finally { startStopBtn.disabled = false; }
+    } catch (error) {
+        console.error('Failed to stop stream', error);
+        showToast('Network error stopping stream. Force resetting UI.', 'error');
+        // Fallback: assume stopped if network fails? Or just re-enable button?
+        // Let's re-enable button but maybe not reset state unless user wants to.
+        // Actually, for better UX, let's reset so they can try starting again.
+        handleStreamEnded();
+    } finally {
+        startStopBtn.disabled = false;
+    }
+}
+
+function handleStreamEnded() {
+    if (currentStreamSession) socket.emit('leave-stream', currentStreamSession);
+    currentStreamSession = null;
+    streamStartTime = null;
+    updateStreamStatus('offline');
+    startStopBtn.textContent = 'Start Stream';
+    startStopBtn.classList.remove('btn-secondary');
+    startStopBtn.classList.add('btn-primary');
+    stopUptimeCounter();
 }
 
 function updateStreamStatus(status) {
@@ -471,7 +488,44 @@ async function loadWizardOverlays() {
             card.className = 'overlay-card';
             const name = `Scene ${new Date(Number(ov.id.split('_')[1])).toLocaleTimeString()}`;
             if (wizardSelectedOverlay && wizardSelectedOverlay.id === ov.id) card.style.borderColor = 'var(--primary-color)';
-            card.innerHTML = `<h4>${name}</h4>`;
+
+            // Preview Container
+            const previewContainer = document.createElement('div');
+            previewContainer.style.width = '100%';
+            previewContainer.style.height = '100px';
+            previewContainer.style.position = 'relative';
+            previewContainer.style.overflow = 'hidden';
+            previewContainer.style.marginBottom = '5px';
+            previewContainer.style.background = '#000';
+
+            // Scaled Content
+            // 1920x1080 -> scaled to fit 100px height. 100/1080 = 0.092
+            const scale = 100 / 1080;
+            const content = document.createElement('div');
+            content.style.width = '1920px';
+            content.style.height = '1080px';
+            content.style.transform = `scale(${scale})`;
+            content.style.transformOrigin = 'top left';
+            content.style.position = 'absolute';
+            content.style.top = '0';
+            content.style.left = '0';
+            content.style.pointerEvents = 'none'; // No interaction in preview
+            content.innerHTML = ov.html;
+
+            // Inject CSS (scoped if possible, but global for now is fine as we are in shadow or iframe ideal)
+            // But since we are cleaning up, let's just use inline styles or existing global CSS if simple
+            // For complex CSS, this might leak. But usually overlays rely on global styles.
+            if (ov.css) {
+                const style = document.createElement('style');
+                style.textContent = ov.css;
+                content.appendChild(style);
+            }
+
+            previewContainer.appendChild(content);
+
+            card.appendChild(previewContainer);
+            card.innerHTML += `<h4 style="font-size:12px; margin:0">${name}</h4>`;
+
             card.style.cursor = 'pointer';
             card.onclick = () => {
                 wizardSelectedOverlay = ov;
