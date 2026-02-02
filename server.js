@@ -7,7 +7,10 @@ const { spawn } = require('child_process');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const multer = require('multer');
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
+
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin'; // Default fallback
 
 const app = express();
 const server = http.createServer(app);
@@ -57,7 +60,50 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-app.use(express.static('public'));
+app.use(cookieParser());
+
+// Public Routes (Login)
+app.use(express.static('public', { index: false })); // Disable auto index serving
+app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
+
+app.post('/api/login', (req, res) => {
+  const { password } = req.body;
+  if (password === ADMIN_PASSWORD) {
+    res.cookie('auth_token', 'valid_token', { httpOnly: true, maxAge: 24 * 60 * 60 * 1000 }); // 1 day
+    res.json({ success: true });
+  } else {
+    res.status(401).json({ error: 'Invalid password' });
+  }
+});
+
+// Auth Middleware
+const checkAuth = (req, res, next) => {
+  // Skip auth for stream page (so compositor works locally) and assets
+  if (req.path === '/stream.html' || req.path.startsWith('/assets/') || req.path.startsWith('/media/')) {
+    return next();
+  }
+
+  // Check cookie
+  if (req.cookies.auth_token === 'valid_token') {
+    return next();
+  }
+
+  // If API, return 401
+  if (req.path.startsWith('/api/')) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  // Otherwise redirect to login
+  res.redirect('/login');
+};
+
+app.use(checkAuth);
+
+// Serve Index manually after auth check
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+app.use(express.static('public')); // Serve other statics that passed checkAuth
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
