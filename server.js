@@ -182,19 +182,23 @@ class StreamSession {
       this.browser = await launch({
         executablePath: puppeteer.executablePath(),
         headless: false, // Required for extension (works with Xvfb)
+        defaultViewport: null, // Critical for extension sizing
         ignoreDefaultArgs: ['--mute-audio'],
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-infobars',
           '--window-size=1920,1080',
+          '--start-fullscreen',
           '--autoplay-policy=no-user-gesture-required',
           '--use-fake-ui-for-media-stream',
           '--use-fake-device-for-media-stream',
           '--disable-features=IsolateOrigins,site-per-process',
           '--disable-background-timer-throttling',
           '--disable-backgrounding-occluded-windows',
-          '--disable-renderer-backgrounding'
+          '--disable-renderer-backgrounding',
+          '--enable-usermedia-screen-capturing',
+          '--allow-http-screen-capture'
         ]
       });
 
