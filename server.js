@@ -484,22 +484,51 @@ app.delete('/api/overlays/:id', (req, res) => {
   }
 });
 
+// Module level state
+let currentStreamVideo = null;
+let currentStreamOverlay = null;
+
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
+
+  // Send current video state
+  if (currentStreamVideo) {
+    socket.emit('video-change', currentStreamVideo);
+  }
+
+  // Send current overlay state
+  if (currentStreamOverlay) {
+    socket.emit('overlay-updated', currentStreamOverlay); // Reuse existing event or new one? stream.html listens to 'overlay-updated'
+  }
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
+
   socket.on('join-stream', (sessionId) => {
     socket.join(sessionId);
     console.log(`Client ${socket.id} joined stream ${sessionId}`);
   });
+
   socket.on('leave-stream', (sessionId) => {
     socket.leave(sessionId);
     console.log(`Client ${socket.id} left stream ${sessionId}`);
   });
+
   socket.on('update-overlay', (data) => {
     const { sessionId, overlay } = data;
     io.to(sessionId).emit('overlay-updated', overlay);
+    // Also update server data
+    const overlays = getOverlays();
+    const existingIndex = overlays.findIndex(o => o.id === overlay.id);
+    if (existingIndex >= 0) {
+      overlays[existingIndex] = { ...overlays[existingIndex], ...overlay, updatedAt: Date.now() };
+      saveOverlays(overlays);
+    }
   });
 
   socket.on('stream-video', (data) => {
+    currentStreamVideo = data; // Save state
     // Broadcast to all clients (including the puppeteer page)
     io.emit('video-change', data);
     console.log('Switching video to:', data.url);

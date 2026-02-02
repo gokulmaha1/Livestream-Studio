@@ -486,16 +486,8 @@ async function loadWizardOverlays() {
         data.overlays.forEach(ov => {
             const card = document.createElement('div');
             card.className = 'overlay-card';
-            const name = `Scene ${new Date(Number(ov.id.split('_')[1])).toLocaleTimeString()}`;
+            const name = `Scene ${new Date(Number(ov.id.split('_')[1] || 0)).toLocaleTimeString()}`;
             if (wizardSelectedOverlay && wizardSelectedOverlay.id === ov.id) card.style.borderColor = 'var(--primary-color)';
-
-            // Preview Container
-            const previewContainer = document.createElement('div');
-            previewContainer.style.width = '100%';
-            previewContainer.style.height = '100px';
-            previewContainer.style.position = 'relative';
-            previewContainer.style.overflow = 'hidden';
-            previewContainer.style.marginBottom = '5px';
             previewContainer.style.background = '#000';
 
             // Scaled Content
@@ -695,112 +687,61 @@ function updateCanvasScale() {
     designerCanvas.style.transform = `scale(${designerScale})`;
 }
 
-function addElement(type) {
-    const el = document.createElement('div');
-    el.classList.add('stream-element');
-    el.style.left = '100px';
-    el.style.top = '100px';
-    el.style.position = 'absolute';
-    el.dataset.type = type;
+// addElement moved to bottom with edit logic
 
-    if (type === 'text') {
-        el.innerText = 'New Text';
-        el.style.fontSize = '48px';
-        el.style.color = '#ffffff';
-        el.style.fontFamily = 'Arial, sans-serif';
-        el.style.whiteSpace = 'nowrap';
-    }
-    /* 
-    else if (type === 'image') {
-        const img = document.createElement('img');
-        img.src = '/path/to/placeholder.png'; 
-        el.appendChild(img);
-    }
-    */
+// Resize Handles
+['nw', 'ne', 'sw', 'se'].forEach(pos => {
+    const handle = document.createElement('div');
+    handle.className = `resize-handle handle-${pos}`;
+    el.appendChild(handle);
 
-    // Drag Logic
-    el.addEventListener('mousedown', (e) => {
-        if (e.target.classList.contains('resize-handle')) return; // Allow resize
+    handle.addEventListener('mousedown', (e) => {
         e.stopPropagation();
-        selectElement(el);
-        isDragging = true;
-        dragStartX = e.clientX;
-        dragStartY = e.clientY;
-        initialEleX = parseInt(el.style.left || 0);
-        initialEleY = parseInt(el.style.top || 0);
+        e.preventDefault(); // Prevent text selection
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const startWidth = parseInt(el.style.width || el.offsetWidth);
+        const startHeight = parseInt(el.style.height || el.offsetHeight);
+        const startLeft = parseInt(el.style.left || 0);
+        const startTop = parseInt(el.style.top || 0);
 
-        const moveHandler = (ev) => {
-            if (!isDragging) return;
-            const dx = (ev.clientX - dragStartX) / designerScale;
-            const dy = (ev.clientY - dragStartY) / designerScale;
-            el.style.left = `${initialEleX + dx}px`;
-            el.style.top = `${initialEleY + dy}px`;
+        const resizeMove = (ev) => {
+            const dx = (ev.clientX - startX) / designerScale;
+            const dy = (ev.clientY - startY) / designerScale;
+
+            let newWidth = startWidth;
+            let newHeight = startHeight;
+            let newLeft = startLeft;
+            let newTop = startTop;
+
+            if (pos.includes('e')) newWidth = startWidth + dx;
+            if (pos.includes('w')) { newWidth = startWidth - dx; newLeft = startLeft + dx; }
+            if (pos.includes('s')) newHeight = startHeight + dy;
+            if (pos.includes('n')) { newHeight = startHeight - dy; newTop = startTop + dy; }
+
+            if (newWidth > 20) {
+                el.style.width = `${newWidth}px`;
+                if (pos.includes('w')) el.style.left = `${newLeft}px`;
+            }
+            if (newHeight > 20) {
+                el.style.height = `${newHeight}px`;
+                if (pos.includes('n')) el.style.top = `${newTop}px`;
+            }
             updatePropsFromSelected();
         };
 
-        const upHandler = () => {
-            isDragging = false;
-            document.removeEventListener('mousemove', moveHandler);
-            document.removeEventListener('mouseup', upHandler);
+        const resizeUp = () => {
+            document.removeEventListener('mousemove', resizeMove);
+            document.removeEventListener('mouseup', resizeUp);
         };
 
-        document.addEventListener('mousemove', moveHandler);
-        document.addEventListener('mouseup', upHandler);
+        document.addEventListener('mousemove', resizeMove);
+        document.addEventListener('mouseup', resizeUp);
     });
+});
 
-    // Resize Handles
-    ['nw', 'ne', 'sw', 'se'].forEach(pos => {
-        const handle = document.createElement('div');
-        handle.className = `resize-handle handle-${pos}`;
-        el.appendChild(handle);
-
-        handle.addEventListener('mousedown', (e) => {
-            e.stopPropagation();
-            e.preventDefault(); // Prevent text selection
-            const startX = e.clientX;
-            const startY = e.clientY;
-            const startWidth = parseInt(el.style.width || el.offsetWidth);
-            const startHeight = parseInt(el.style.height || el.offsetHeight);
-            const startLeft = parseInt(el.style.left || 0);
-            const startTop = parseInt(el.style.top || 0);
-
-            const resizeMove = (ev) => {
-                const dx = (ev.clientX - startX) / designerScale;
-                const dy = (ev.clientY - startY) / designerScale;
-
-                let newWidth = startWidth;
-                let newHeight = startHeight;
-                let newLeft = startLeft;
-                let newTop = startTop;
-
-                if (pos.includes('e')) newWidth = startWidth + dx;
-                if (pos.includes('w')) { newWidth = startWidth - dx; newLeft = startLeft + dx; }
-                if (pos.includes('s')) newHeight = startHeight + dy;
-                if (pos.includes('n')) { newHeight = startHeight - dy; newTop = startTop + dy; }
-
-                if (newWidth > 20) {
-                    el.style.width = `${newWidth}px`;
-                    if (pos.includes('w')) el.style.left = `${newLeft}px`;
-                }
-                if (newHeight > 20) {
-                    el.style.height = `${newHeight}px`;
-                    if (pos.includes('n')) el.style.top = `${newTop}px`;
-                }
-                updatePropsFromSelected();
-            };
-
-            const resizeUp = () => {
-                document.removeEventListener('mousemove', resizeMove);
-                document.removeEventListener('mouseup', resizeUp);
-            };
-
-            document.addEventListener('mousemove', resizeMove);
-            document.addEventListener('mouseup', resizeUp);
-        });
-    });
-
-    designerCanvas.appendChild(el);
-    selectElement(el);
+designerCanvas.appendChild(el);
+selectElement(el);
 }
 
 function selectElement(el) {
@@ -877,17 +818,147 @@ async function saveDesignerScene() {
     const css = '.stream-element { position: absolute; }'; // Basic CSS
 
     const overlayData = {
-        id: `scene_${Date.now()}`,
-        html: html,
-        css: css,
-        js: '// Visual Designer Scene'
-    };
+        // Capture JSON state
+        const elements = Array.from(document.querySelectorAll('.stream-element')).map(el => ({
+            type: el.dataset.type,
+            content: el.dataset.type === 'text' ? el.innerText : el.querySelector('img, video, iframe')?.src || '', // Simplified
+            // For HTML/Embeds, we need the innerHTML or src
+            htmlContent: el.dataset.type === 'html' ? el.querySelector('.html-content')?.innerHTML : null,
+            style: {
+                left: el.style.left,
+                top: el.style.top,
+                width: el.style.width,
+                height: el.style.height,
+                color: el.style.color,
+                fontSize: el.style.fontSize,
+                zIndex: el.style.zIndex,
+                backgroundColor: el.style.backgroundColor
+            }
+        }));
 
-    try {
-        const response = await fetch('/api/overlay/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(overlayData) });
-        const data = await response.json();
-        if (data.success) { showToast('Scene saved successfully', 'success'); loadOverlays(); }
+        const overlayData = {
+            id: currentEditingId || `scene_${Date.now()}`,
+            html: html,
+            css: css,
+            json: elements, // Save structured data
+            js: '// Visual Designer Scene'
+        };
+
+        try {
+            const response = await fetch('/api/overlay/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(overlayData) });
+            const data = await response.json();
+            if(data.success) {
+                showToast('Scene saved successfully', 'success');
+    loadOverlays();
+    currentEditingId = null; // Reset after save
+    streamDesignerModal.classList.remove('active');
+}
     } catch (e) { showToast('Failed to save scene', 'error'); }
+}
+
+let currentEditingId = null;
+
+function editOverlay(id) {
+    fetch(`/api/overlay/${id}`)
+        .then(res => res.json())
+        .then(data => {
+            if (!data.json) {
+                showToast('This overlay cannot be edited (legacy format)', 'warning');
+                return;
+            }
+            currentEditingId = data.id;
+            openDesigner();
+            // Clear Canvas
+            designerCanvas.innerHTML = '';
+
+            // Restore Elements
+            data.json.forEach(elData => {
+                const el = addElement(elData.type, true); // true = skip default props
+                // Restore styles
+                Object.assign(el.style, elData.style);
+
+                if (elData.type === 'text') {
+                    el.innerText = elData.content;
+                } else if (elData.type === 'html') {
+                    const container = el.querySelector('.html-content');
+                    if (container && elData.htmlContent) container.innerHTML = elData.htmlContent;
+                    // Re-run iframe detection if needed, or just trust html logic
+                    // If it was an iframe before, htmlContent should have it.
+                }
+            });
+        })
+        .catch(e => showToast('Failed to load overlay for editing', 'error'));
+}
+
+// Update addElement to optional skip defaults
+function addElement(type, skipDefaults = false) {
+    const el = document.createElement('div');
+    el.classList.add('stream-element');
+    el.style.position = 'absolute';
+    el.dataset.type = type;
+
+    if (!skipDefaults) {
+        el.style.left = '100px';
+        el.style.top = '100px';
+    }
+
+    if (type === 'text') {
+        if (!skipDefaults) {
+            el.innerText = 'New Text';
+            el.style.fontSize = '48px';
+            el.style.color = '#ffffff';
+        }
+        el.style.fontFamily = 'Arial, sans-serif';
+        el.style.whiteSpace = 'nowrap';
+    } else if (type === 'html') {
+        const content = document.createElement('div');
+        content.className = 'html-content';
+        content.style.width = '100%';
+        content.style.height = '100%';
+        if (!skipDefaults) {
+            content.innerHTML = '<iframe src="https://example.com" style="width:100%;height:100%;border:none;pointer-events:none;"></iframe>';
+            el.style.width = '400px';
+            el.style.height = '300px';
+        }
+        el.appendChild(content);
+    }
+
+    // Drag Logic (reused)
+    el.addEventListener('mousedown', (e) => {
+        if (e.target.classList.contains('resize-handle')) return;
+        e.stopPropagation();
+        selectElement(el);
+        isDragging = true;
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
+        initialEleX = parseInt(el.style.left || 0);
+        initialEleY = parseInt(el.style.top || 0);
+
+        const moveHandler = (ev) => {
+            if (!isDragging) return;
+            const dx = (ev.clientX - dragStartX) / designerScale;
+            const dy = (ev.clientY - dragStartY) / designerScale;
+            el.style.left = `${initialEleX + dx}px`;
+            el.style.top = `${initialEleY + dy}px`;
+            updatePropsFromSelected();
+        };
+
+        const upHandler = () => {
+            isDragging = false;
+            document.removeEventListener('mousemove', moveHandler);
+            document.removeEventListener('mouseup', upHandler);
+        };
+
+        document.addEventListener('mousemove', moveHandler);
+        document.addEventListener('mouseup', upHandler);
+    });
+
+    // Add Resize Handles
+    addResizeHandles(el);
+
+    designerCanvas.appendChild(el);
+    selectElement(el);
+    return el;
 }
 
 // Initialize
