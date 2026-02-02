@@ -228,7 +228,9 @@ class StreamSession {
       });
 
     } catch (error) {
-      this.log(`Start error: ${error.message}`, 'error');
+      const errorMsg = error.message || (typeof error === 'string' ? error : JSON.stringify(error));
+      this.log(`Start error: ${errorMsg}`, 'error');
+      console.error(error); // Print full stack to server console logs
       this.stop();
       throw error;
     }
