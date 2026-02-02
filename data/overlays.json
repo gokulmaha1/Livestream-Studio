@@ -1,0 +1,23 @@
+[
+  {
+    "id": "overlay_1769979030707",
+    "html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Live Time Display</title>\n    <style>\n        body {\n            margin: 0;\n            height: 100vh;\n            display: flex;\n            justify-content: center;\n            align-items: center;\n            font-family: Arial, sans-serif;\n            background: #0f172a;\n            color: #38bdf8;\n        }\n        #clock {\n            font-size: 60px;\n            letter-spacing: 2px;\n        }\n    </style>\n</head>\n<body>\n\n<div id=\"clock\"></div>\n\n<script>\n    function updateTime() {\n        const now = new Date();\n        const hours = String(now.getHours()).padStart(2, '0');\n        const minutes = String(now.getMinutes()).padStart(2, '0');\n        const seconds = String(now.getSeconds()).padStart(2, '0');\n\n        document.getElementById('clock').innerText =\n            `${hours}:${minutes}:${seconds}`;\n    }\n\n    setInterval(updateTime, 1000);\n    updateTime();\n</script>\n\n</body>\n</html>\n",
+    "css": ".overlay-container { font-family: Arial, sans-serif; padding: 20px; }\nh1 { color: #ffffff; font-size: 48px; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }\n.info { color: #ffaa00; font-size: 24px; }",
+    "js": "// Add your JavaScript here\nconsole.log(\"Overlay loaded\");",
+    "updatedAt": 1769979030714
+  },
+  {
+    "id": "overlay_1770010038159",
+    "html": "<iframe src=\"https://tickernews.co/where-to-watch/#fvp_5,9s\" width=\"100%\" height=\"100%\" frameborder=\"0\" allow=\"autoplay; encrypted-media\" style=\"width:100vw; height:100vh; border:none;\"></iframe>",
+    "css": "body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }",
+    "js": "// Iframe Embed for https://tickernews.co/where-to-watch/#fvp_5,9s",
+    "updatedAt": 1770010038188
+  },
+  {
+    "id": "scene_1770011032743",
+    "html": "\n                                            <!-- Elements will be dropped here -->\n                                        <div class=\"stream-element\" data-type=\"video\" style=\"left: 361.143px; top: 183.143px; position: absolute; z-index: 0;\"><video src=\"/media/1770010925900-production_id_4378109__2160p_.mp4\" autoplay=\"\" loop=\"\" style=\"width: 400px; pointer-events: none;\"></video></div>",
+    "css": ".stream-element { position: absolute; white-space: nowrap; }",
+    "js": "// Visual Designer Scene",
+    "updatedAt": 1770011032758
+  }
+]

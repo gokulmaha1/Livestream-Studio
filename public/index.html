@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Livestream Studio</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="logo">
+                <h1>🎥 Livestream Studio</h1>
+            </div>
+            <nav class="nav-menu">
+                <button class="nav-item active" data-view="dashboard"><span class="icon">📊</span> Dashboard</button>
+                <button class="nav-item" data-view="stream"><span class="icon">📹</span> Stream Settings</button>
+                <button class="nav-item" data-view="overlays"><span class="icon">🎨</span> HTML Overlays</button>
+                <button class="nav-item" data-view="media"><span class="icon">📁</span> Media Library</button>
+                <button class="nav-item" data-view="scenes"><span class="icon">🎬</span> Scenes</button>
+            </nav>
+            <div class="stream-status">
+                <div class="status-indicator" id="statusIndicator">
+                    <span class="dot offline"></span>
+                    <span class="text">Offline</span>
+                </div>
+                <div class="uptime" id="uptime">00:00:00</div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <div class="header-left">
+                    <h2 id="viewTitle">Dashboard</h2>
+                </div>
+                <div class="header-right">
+                    <div class="stats">
+                        <div class="stat-item"><span class="stat-label">FPS:</span><span class="stat-value"
+                                id="fpsValue">0</span></div>
+                        <div class="stat-item"><span class="stat-label">Bitrate:</span><span class="stat-value"
+                                id="bitrateValue">0</span></div>
+                    </div>
+                    <button class="btn btn-primary" id="startStopBtn">Start Stream</button>
+                </div>
+            </header>
+
+            <div class="views-container">
+                <!-- Dashboard -->
+                <div class="view active" id="dashboardView">
+                    <div class="preview-container">
+                        <div class="preview-window" id="previewWindow">
+                            <canvas id="previewCanvas"></canvas>
+                            <div class="overlay-layer" id="overlayLayer"></div>
+                        </div>
+                        <div class="info-panel">
+                            <h3>Stream Information</h3>
+                            <div class="info-grid">
+                                <div class="info-item"><span class="label">Status:</span><span class="value"
+                                        id="streamStatus">Not streaming</span></div>
+                                <div class="info-item"><span class="label">Resolution:</span><span class="value"
+                                        id="resolutionInfo">1920x1080</span></div>
+                                <div class="info-item"><span class="label">Framerate:</span><span class="value"
+                                        id="framerateInfo">30 fps</span></div>
+                                <div class="info-item"><span class="label">Bitrate:</span><span class="value"
+                                        id="bitrateInfo">4500 kbps</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="quick-actions">
+                        <h3>Quick Actions</h3>
+                        <div class="action-buttons">
+                            <button class="action-btn" id="addOverlayBtn"><span class="icon">➕</span> Add
+                                Overlay</button>
+                            <button class="action-btn" id="settingsBtn"><span class="icon">⚙️</span> Settings</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stream Settings -->
+                <div class="view" id="streamView">
+                    <div class="settings-container">
+                        <h3>YouTube Stream Configuration</h3>
+                        <form id="streamConfigForm">
+                            <div class="form-group">
+                                <label for="streamKey">Stream Key</label>
+                                <input type="password" id="streamKey" placeholder="Enter your YouTube stream key"
+                                    required>
+                                <small>Get your stream key from YouTube Studio</small>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="resolution">Resolution</label>
+                                    <select id="resolution">
+                                        <option value="1920x1080">1920x1080 (Full HD)</option>
+                                        <option value="1280x720">1280x720 (HD)</option>
+                                        <option value="854x480">854x480 (SD)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="framerate">Framerate</label>
+                                    <select id="framerate">
+                                        <option value="60">60 fps</option>
+                                        <option value="30" selected>30 fps</option>
+                                        <option value="24">24 fps</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="bitrate">Video Bitrate</label>
+                                    <select id="bitrate">
+                                        <option value="6000k">6000 kbps (High)</option>
+                                        <option value="4500k" selected>4500 kbps (Medium)</option>
+                                        <option value="3000k">3000 kbps (Low)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="preset">Encoding Preset</label>
+                                    <select id="preset">
+                                        <option value="ultrafast">Ultra Fast (Lowest CPU)</option>
+                                        <option value="veryfast" selected>Very Fast</option>
+                                        <option value="faster">Faster</option>
+                                        <option value="fast">Fast</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">Save Configuration</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Overlays -->
+                <div class="view" id="overlaysView">
+                    <div class="overlays-container">
+                        <div class="overlays-header">
+                            <h3>HTML Overlays</h3>
+                            <div class="header-actions">
+                                <button class="btn btn-secondary" id="openDesignerBtn">🎨 Visual Designer
+                                    (Beta)</button>
+                                <button class="btn btn-secondary" id="embedWebsiteBtn">Embed a Website</button>
+                                <button class="btn btn-primary" id="createOverlayBtn">Code Editor</button>
+                            </div>
+                        </div>
+                        <div class="overlays-grid" id="overlaysGrid"></div>
+
+                        <!-- Code Editor Modal -->
+                        <div class="modal" id="overlayEditorModal">
+                            <div class="modal-content large">
+                                <div class="modal-header">
+                                    <h3>Overlay Editor</h3>
+                                    <button class="close-btn" id="closeOverlayEditor">×</button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="editor-container">
+                                        <div class="editor-panel">
+                                            <div class="tabs">
+                                                <button class="tab active" data-tab="html">HTML</button>
+                                                <button class="tab" data-tab="css">CSS</button>
+                                                <button class="tab" data-tab="js">JavaScript</button>
+                                            </div>
+                                            <div class="code-editor">
+                                                <textarea id="htmlEditor" class="code-input active"
+                                                    placeholder="Enter HTML..."></textarea>
+                                                <textarea id="cssEditor" class="code-input"
+                                                    placeholder="Enter CSS..."></textarea>
+                                                <textarea id="jsEditor" class="code-input"
+                                                    placeholder="Enter JavaScript..."></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="preview-panel">
+                                            <div class="preview-header">
+                                                <h4>Live Preview</h4>
+                                                <button class="btn btn-small" id="refreshPreview">Refresh</button>
+                                            </div>
+                                            <iframe id="overlayPreview" sandbox="allow-scripts"></iframe>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button class="btn btn-secondary" id="cancelOverlay">Cancel</button>
+                                    <button class="btn btn-primary" id="saveOverlay">Save Overlay</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Embed Website Modal -->
+                        <div class="modal" id="websiteEmbedModal">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h3>Embed Website</h3>
+                                    <button class="close-btn" id="closeWebsiteEmbed">×</button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="form-group">
+                                        <label for="websiteUrl">Website URL</label>
+                                        <input type="url" id="websiteUrl" placeholder="https://example.com"
+                                            style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #334155; background: #1e293b; color: white;"
+                                            required>
+                                        <small style="color: #94a3b8; display: block; margin-top: 5px;">Ensure the
+                                            website allows iframe embedding (some sites block it).</small>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button class="btn btn-secondary" id="cancelWebsiteEmbed">Cancel</button>
+                                    <button class="btn btn-primary" id="saveWebsiteEmbed">Embed Website</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Visual Stream Designer Modal -->
+                        <div class="modal" id="streamDesignerModal">
+                            <div class="modal-content large" style="width: 95%; max-width: 1600px; height: 90vh;">
+                                <div class="modal-header">
+                                    <h3>Stream Designer</h3>
+                                    <div class="header-actions">
+                                        <button class="btn btn-secondary" id="loadSceneBtn">📂 Load Scene</button>
+                                        <button class="btn btn-primary" id="saveSceneBtn">💾 Save Scene</button>
+                                        <button class="close-btn" id="closeStreamDesigner">×</button>
+                                    </div>
+                                </div>
+                                <div class="designer-toolbar">
+                                    <button class="btn btn-small btn-secondary" id="addTextBtn">📝 Add Text</button>
+                                    <button class="btn btn-small btn-secondary" id="addImageBtn">🖼️ Add Image</button>
+                                    <button class="btn btn-small btn-secondary" id="addVideoBtn">🎥 Add Video</button>
+                                    <div style="flex:1"></div>
+                                    <button class="btn btn-small btn-error" id="deleteElementBtn"
+                                        style="background:var(--error-color)">🗑️ Delete</button>
+                                </div>
+                                <div class="designer-layout" style="flex:1; overflow:hidden;">
+                                    <div class="designer-workspace" id="designerWorkspace">
+                                        <div class="designer-canvas" id="designerCanvas">
+                                            <!-- Elements will be dropped here -->
+                                        </div>
+                                    </div>
+                                    <div class="properties-panel" id="propertiesPanel">
+                                        <h4>Properties</h4>
+                                        <div class="form-group">
+                                            <label>Content / Src</label>
+                                            <input type="text" id="propContent">
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>X</label>
+                                                <input type="number" id="propX">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Y</label>
+                                                <input type="number" id="propY">
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Width</label>
+                                                <input type="number" id="propWidth">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Height</label>
+                                                <input type="number" id="propHeight">
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Color</label>
+                                            <input type="color" id="propColor" style="height:40px">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Font Size</label>
+                                            <input type="number" id="propFontSize">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Z-Index</label>
+                                            <input type="number" id="propZIndex">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Media Library -->
+                <div class="view" id="mediaView">
+                    <div class="overlays-container">
+                        <div class="overlays-header">
+                            <h3>Media Library</h3>
+                            <div class="header-actions">
+                                <input type="file" id="mediaUploadInput" style="display:none" accept="image/*,video/*">
+                                <button class="btn btn-primary" id="uploadMediaBtn">⬆️ Upload Media</button>
+                            </div>
+                        </div>
+                        <div class="overlays-grid" id="mediaGrid">
+                            <!-- Media items will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Media Selector Modal -->
+                <div class="modal" id="mediaSelectorModal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Select Media</h3>
+                            <button class="close-btn" id="closeMediaSelector">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="overlays-grid" id="selectorGrid"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scenes -->
+                <div class="view" id="scenesView">
+                    <div class="settings-container">
+                        <h3>Scene Management</h3>
+                        <p style="color: var(--text-secondary); margin-top: 10px;">Coming soon: Create and manage
+                            multiple scenes for your stream.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Livestream Studio</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1 class="logo">Livestream Studio</h1>
+            
+            <div class="section">
+                <h2>Stream Settings</h2>
+                <div class="form-group">
+                    <label>YouTube Stream Key</label>
+                    <input type="password" id="streamKey" placeholder="Enter your stream key">
+                </div>
+                
+                <div class="form-group">
+                    <label>Resolution</label>
+                    <select id="resolution">
+                        <option value="1920x1080">1080p (1920x1080)</option>
+                        <option value="1280x720">720p (1280x720)</option>
+                        <option value="854x480">480p (854x480)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Framerate</label>
+                    <select id="framerate">
+                        <option value="60">60 FPS</option>
+                        <option value="30" selected>30 FPS</option>
+                        <option value="24">24 FPS</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Video Bitrate</label>
+                    <select id="bitrate">
+                        <option value="6000k">6000 kbps (High)</option>
+                        <option value="4500k" selected>4500 kbps (Medium)</option>
+                        <option value="3000k">3000 kbps (Low)</option>
+                    </select>
+                </div>
+                
+                <button class="btn btn-primary" id="saveConfig">Save Settings</button>
+            </div>
+            
+            <div class="section">
+                <h2>Stream Control</h2>
+                <button class="btn btn-success" id="startStream">
+                    <span class="icon">▶</span> Start Stream
+                </button>
+                <button class="btn btn-danger" id="stopStream" disabled>
+                    <span class="icon">■</span> Stop Stream
+                </button>
+                <button class="btn btn-secondary" id="openPreview">
+                    <span class="icon">👁</span> Open Preview
+                </button>
+            </div>
+            
+            <div class="section">
+                <h2>Status</h2>
+                <div class="status-indicator">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="statusText">Offline</span>
+                </div>
+                <div class="stats">
+                    <div class="stat-item">
+                        <label>Duration:</label>
+                        <span id="duration">00:00:00</span>
+                    </div>
+                    <div class="stat-item">
+                        <label>CPU Usage:</label>
+                        <span id="cpuUsage">0%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="header">
+                <h2>Overlay Editor</h2>
+                <div class="header-actions">
+                    <button class="btn btn-sm" id="addText">+ Text</button>
+                    <button class="btn btn-sm" id="addImage">+ Image</button>
+                    <button class="btn btn-sm" id="addWidget">+ Widget</button>
+                    <button class="btn btn-sm" id="clearOverlay">Clear All</button>
+                </div>
+            </div>
+            
+            <div class="canvas-container">
+                <div class="canvas-wrapper">
+                    <div id="overlayCanvas" class="overlay-canvas">
+                        <!-- Overlay elements will be added here -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="layers-panel">
+                <h3>Layers</h3>
+                <div id="layersList" class="layers-list">
+                    <!-- Layers will be listed here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modals -->
+    <div id="textModal" class="modal">
+        <div class="modal-content">
+            <h3>Add Text Overlay</h3>
+            <div class="form-group">
+                <label>Text Content</label>
+                <input type="text" id="textContent" placeholder="Enter text">
+            </div>
+            <div class="form-group">
+                <label>Font Size</label>
+                <input type="number" id="fontSize" value="32" min="12" max="200">
+            </div>
+            <div class="form-group">
+                <label>Font Color</label>
+                <input type="color" id="fontColor" value="#ffffff">
+            </div>
+            <div class="form-group">
+                <label>Background Color</label>
+                <input type="color" id="bgColor" value="#000000">
+            </div>
+            <div class="form-group">
+                <label>Opacity</label>
+                <input type="range" id="textOpacity" min="0" max="100" value="100">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" id="addTextConfirm">Add</button>
+                <button class="btn btn-secondary" id="cancelText">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="renderer.js"></script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+{
+  "streamKey": "",
+  "resolution": "1920x1080",
+  "framerate": 30,
+  "bitrate": "4500k",
+  "audioCodec": "aac",
+  "audioBitrate": "128k",
+  "preset": "veryfast",
+  "useHardwareAcceleration": false,
+  
+  "presets": {
+    "lowCPU": {
+      "name": "Low CPU Usage",
+      "resolution": "1280x720",
+      "framerate": 30,
+      "bitrate": "3000k",
+      "preset": "ultrafast",
+      "description": "Minimal CPU usage, good for older systems"
+    },
+    "balanced": {
+      "name": "Balanced Quality",
+      "resolution": "1920x1080",
+      "framerate": 30,
+      "bitrate": "4500k",
+      "preset": "veryfast",
+      "description": "Good balance between quality and performance"
+    },
+    "highQuality": {
+      "name": "High Quality",
+      "resolution": "1920x1080",
+      "framerate": 60,
+      "bitrate": "6000k",
+      "preset": "fast",
+      "description": "Best quality, requires powerful system"
+    },
+    "lowBandwidth": {
+      "name": "Low Bandwidth",
+      "resolution": "854x480",
+      "framerate": 30,
+      "bitrate": "2000k",
+      "preset": "veryfast",
+      "description": "For slow internet connections"
+    },
+    "gaming": {
+      "name": "Gaming Stream",
+      "resolution": "1920x1080",
+      "framerate": 60,
+      "bitrate": "9000k",
+      "preset": "veryfast",
+      "description": "Optimized for fast-paced gaming content"
+    }
+  },
+  
+  "advancedSettings": {
+    "keyframeInterval": 2,
+    "bFrames": 2,
+    "sceneThreshold": 0,
+    "bufferSize": "9000k",
+    "audioSampleRate": 44100,
+    "audioChannels": 2
+  },
+  
+  "overlaySettings": {
+    "enableOverlays": true,
+    "overlayOpacity": 1.0,
+    "overlayBlending": "normal"
+  },
+  
+  "rtmpServers": [
+    {
+      "name": "YouTube Primary",
+      "url": "rtmp://a.rtmp.youtube.com/live2/"
+    },
+    {
+      "name": "YouTube Backup",
+      "url": "rtmp://b.rtmp.youtube.com/live2/"
+    },
+    {
+      "name": "YouTube Secondary",
+      "url": "rtmp://c.rtmp.youtube.com/live2/"
+    }
+  ],
+  
+  "hotkeys": {
+    "startStream": "Ctrl+S",
+    "stopStream": "Ctrl+Shift+S",
+    "togglePreview": "Ctrl+P",
+    "addTextOverlay": "Ctrl+T"
+  }
+}
