@@ -113,6 +113,7 @@ app.use('/api/', limiter);
 
 let activeStreams = new Map();
 const DATA_FILE = path.join(__dirname, 'data', 'overlays.json');
+const CONFIG_FILE = path.join(__dirname, 'data', 'config.json');
 
 // Ensure data directory exists
 if (!fs.existsSync(path.dirname(DATA_FILE))) {
@@ -120,6 +121,18 @@ if (!fs.existsSync(path.dirname(DATA_FILE))) {
 }
 if (!fs.existsSync(DATA_FILE)) {
   fs.writeFileSync(DATA_FILE, '[]');
+}
+if (!fs.existsSync(CONFIG_FILE)) {
+  fs.writeFileSync(CONFIG_FILE, '{}');
+}
+
+function getConfig() {
+  try { return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')); }
+  catch (e) { return {}; }
+}
+
+function saveConfig(config) {
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
 }
 
 function getOverlays() {
@@ -437,6 +450,19 @@ app.get('/api/overlay/:id', (req, res) => {
     return res.status(404).json({ error: 'Overlay not found' });
   }
   res.json(overlay);
+});
+
+app.get('/api/config', (req, res) => {
+  res.json(getConfig());
+});
+
+app.post('/api/config', (req, res) => {
+  try {
+    saveConfig(req.body);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 app.get('/api/overlays', (req, res) => {

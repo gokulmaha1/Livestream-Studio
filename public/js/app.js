@@ -66,9 +66,21 @@ function switchView(viewName) {
 }
 
 // Stream Controls
-function initStreamControls() {
-    startStopBtn.addEventListener('click', () => currentStreamSession ? stopStream() : startStream());
-    streamConfigForm.addEventListener('submit', (e) => { e.preventDefault(); saveStreamConfig(); });
+// Stream Controls
+function setupStreamControls() {
+    // Remove old listeners if any by simple assignment (not ideal but works if we control the init)
+    // Better to just ensure this function defines the correct behavior
+    startStopBtn.onclick = () => { // Use onclick to override potential previous listeners
+        if (currentStreamSession) {
+            stopStream();
+        } else {
+            openStreamWizard();
+        }
+    };
+    streamConfigForm.onsubmit = (e) => { // Use onsubmit
+        e.preventDefault();
+        saveStreamConfig();
+    };
 }
 
 async function startStream() {
@@ -158,13 +170,29 @@ function getStreamConfig() {
     };
 }
 
-function saveStreamConfig() {
-    const config = getStreamConfig();
-    if (config.streamKey) localStorage.setItem('streamKey', config.streamKey);
-    localStorage.setItem('streamConfig', JSON.stringify(config));
-    document.getElementById('resolutionInfo').textContent = config.resolution;
-    document.getElementById('framerateInfo').textContent = `${config.framerate} fps`;
-    document.getElementById('bitrateInfo').textContent = `${config.bitrate.replace('k', '')} kbps`;
+async function loadSavedConfig() {
+    try {
+        const response = await fetch('/api/config');
+        const config = await response.json();
+        if (config.streamKey) document.getElementById('streamKey').value = config.streamKey;
+        if (config.resolution) document.getElementById('resolution').value = config.resolution;
+        if (config.fps) document.getElementById('framerate').value = config.fps;
+        if (config.bitrate) document.getElementById('bitrate').value = config.bitrate;
+        if (config.preset) document.getElementById('preset').value = config.preset;
+
+        // Update labels
+        if (config.resolution) document.getElementById('resolutionInfo').textContent = config.resolution;
+    } catch (e) { console.error('Failed to load config', e); }
+}
+
+async function saveStreamConfig() {
+    const config = {
+        streamKey: document.getElementById('streamKey').value,
+        resolution: document.getElementById('resolution').value,
+        fps: document.getElementById('framerate').value,
+        bitrate: document.getElementById('bitrate').value,
+        preset: document.getElementById('preset').value
+    };
     showToast('Configuration saved successfully', 'success');
 }
 
@@ -594,6 +622,7 @@ function addElement(type) {
 
     // Drag Logic
     el.addEventListener('mousedown', (e) => {
+        if (e.target.classList.contains('resize-handle')) return; // Allow resize
         e.stopPropagation();
         selectElement(el);
         isDragging = true;
@@ -619,6 +648,57 @@ function addElement(type) {
 
         document.addEventListener('mousemove', moveHandler);
         document.addEventListener('mouseup', upHandler);
+    });
+
+    // Resize Handles
+    ['nw', 'ne', 'sw', 'se'].forEach(pos => {
+        const handle = document.createElement('div');
+        handle.className = `resize-handle handle-${pos}`;
+        el.appendChild(handle);
+
+        handle.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+            e.preventDefault(); // Prevent text selection
+            const startX = e.clientX;
+            const startY = e.clientY;
+            const startWidth = parseInt(el.style.width || el.offsetWidth);
+            const startHeight = parseInt(el.style.height || el.offsetHeight);
+            const startLeft = parseInt(el.style.left || 0);
+            const startTop = parseInt(el.style.top || 0);
+
+            const resizeMove = (ev) => {
+                const dx = (ev.clientX - startX) / designerScale;
+                const dy = (ev.clientY - startY) / designerScale;
+
+                let newWidth = startWidth;
+                let newHeight = startHeight;
+                let newLeft = startLeft;
+                let newTop = startTop;
+
+                if (pos.includes('e')) newWidth = startWidth + dx;
+                if (pos.includes('w')) { newWidth = startWidth - dx; newLeft = startLeft + dx; }
+                if (pos.includes('s')) newHeight = startHeight + dy;
+                if (pos.includes('n')) { newHeight = startHeight - dy; newTop = startTop + dy; }
+
+                if (newWidth > 20) {
+                    el.style.width = `${newWidth}px`;
+                    if (pos.includes('w')) el.style.left = `${newLeft}px`;
+                }
+                if (newHeight > 20) {
+                    el.style.height = `${newHeight}px`;
+                    if (pos.includes('n')) el.style.top = `${newTop}px`;
+                }
+                updatePropsFromSelected();
+            };
+
+            const resizeUp = () => {
+                document.removeEventListener('mousemove', resizeMove);
+                document.removeEventListener('mouseup', resizeUp);
+            };
+
+            document.addEventListener('mousemove', resizeMove);
+            document.addEventListener('mouseup', resizeUp);
+        });
     });
 
     designerCanvas.appendChild(el);
@@ -665,7 +745,12 @@ function updateSelectedFromProps() {
         selectedElement.style.fontSize = document.getElementById('propFontSize').value + 'px';
         selectedElement.style.color = document.getElementById('propColor').value;
     } else if (selectedElement.dataset.type === 'html') {
-        selectedElement.innerHTML = document.getElementById('propContent').value;
+        const val = document.getElementById('propContent').value;
+        if (val.startsWith('http')) {
+            selectedElement.innerHTML = `<iframe src="${val}" style="width:100%;height:100%;border:none;"></iframe>`;
+        } else {
+            selectedElement.innerHTML = val;
+        }
     }
 }
 
