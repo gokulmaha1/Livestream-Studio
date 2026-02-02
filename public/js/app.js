@@ -488,6 +488,14 @@ async function loadWizardOverlays() {
             card.className = 'overlay-card';
             const name = `Scene ${new Date(Number(ov.id.split('_')[1] || 0)).toLocaleTimeString()}`;
             if (wizardSelectedOverlay && wizardSelectedOverlay.id === ov.id) card.style.borderColor = 'var(--primary-color)';
+
+            // Preview Container
+            const previewContainer = document.createElement('div');
+            previewContainer.style.width = '100%';
+            previewContainer.style.height = '100px';
+            previewContainer.style.position = 'relative';
+            previewContainer.style.overflow = 'hidden';
+            previewContainer.style.marginBottom = '5px';
             previewContainer.style.background = '#000';
 
             // Scaled Content
@@ -669,6 +677,43 @@ function initStreamDesigner() {
     });
 
     document.getElementById('saveSceneBtn').addEventListener('click', saveDesignerScene);
+    document.getElementById('applyLiveBtn').addEventListener('click', applyDesignerLive);
+}
+
+function applyDesignerLive() {
+    // Similar to save, but emits 'apply-overlay'
+    // 1. Capture State (Reuse logic? Refactor if possible, but for now duplicate for speed/safety)
+    const clone = designerCanvas.cloneNode(true);
+    clone.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
+    const html = clone.innerHTML;
+    const css = '.stream-element { position: absolute; }';
+
+    const elements = Array.from(document.querySelectorAll('.stream-element')).map(el => ({
+        type: el.dataset.type,
+        content: el.dataset.type === 'text' ? el.innerText : el.querySelector('img, video, iframe')?.src || '',
+        htmlContent: el.dataset.type === 'html' ? el.querySelector('.html-content')?.innerHTML : null,
+        style: {
+            left: el.style.left,
+            top: el.style.top,
+            width: el.style.width,
+            height: el.style.height,
+            color: el.style.color,
+            fontSize: el.style.fontSize,
+            zIndex: el.style.zIndex,
+            backgroundColor: el.style.backgroundColor
+        }
+    }));
+
+    const overlayData = {
+        id: currentEditingId || `scene_${Date.now()}`,
+        html: html,
+        css: css,
+        json: elements,
+        js: '// Live Applied'
+    };
+
+    socket.emit('apply-overlay', overlayData);
+    showToast('Overlay Applied Live! 🚀', 'success');
 }
 
 function openDesigner() {

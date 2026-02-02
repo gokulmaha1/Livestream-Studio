@@ -534,6 +534,13 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('apply-overlay', (overlay) => {
+    currentStreamOverlay = overlay;
+    io.emit('overlay-updated', overlay); // Broadcast to all
+    console.log('Applying overlay live:', overlay.id);
+    io.emit('server-log', { message: `Overlay applied live: ${overlay.id}`, type: 'success' });
+  });
+
   socket.on('stream-video', (data) => {
     currentStreamVideo = data; // Save state
     // Broadcast to all clients (including the puppeteer page)
