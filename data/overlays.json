@@ -19,5 +19,12 @@
     "css": ".stream-element { position: absolute; white-space: nowrap; }",
     "js": "// Visual Designer Scene",
     "updatedAt": 1770011032758
+  },
+  {
+    "id": "scene_1770012762943",
+    "html": "\n                                            <!-- Elements will be dropped here -->\n                                        <div class=\"stream-element\" data-type=\"video\" style=\"left: 361.143px; top: 183.143px; position: absolute; z-index: 0;\"><video src=\"/media/1770010925900-production_id_4378109__2160p_.mp4\" autoplay=\"\" loop=\"\" style=\"width: 400px; pointer-events: none;\"></video><div class=\"resize-handle handle-nw\"></div><div class=\"resize-handle handle-ne\"></div><div class=\"resize-handle handle-sw\"></div><div class=\"resize-handle handle-se\"></div></div><div class=\"stream-element\" data-type=\"html\" style=\"left: -7px; top: 473px; position: absolute; width: 1198.36px; height: 138.071px; z-index: 0;\"><iframe width=\"560\" height=\"315\" src=\"https://www.youtube.com/embed/a36X8xIonfs?si=j9A6vCLHEdY5RPn2&amp;controls=0\" title=\"YouTube video player\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" referrerpolicy=\"strict-origin-when-cross-origin\" allowfullscreen=\"\"></iframe></div>",
+    "css": ".stream-element { position: absolute; }",
+    "js": "// Visual Designer Scene",
+    "updatedAt": 1770012762980
   }
 ]

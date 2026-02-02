@@ -314,6 +314,7 @@ function initStreamDesigner() {
 
     // Tools
     document.getElementById('addTextBtn').addEventListener('click', () => addElement('text'));
+    document.getElementById('addHtmlBtn').addEventListener('click', () => addElement('html'));
     // document.getElementById('addImageBtn').addEventListener('click', () => addElement('image')); // TODO: Media Library
     document.getElementById('deleteElementBtn').addEventListener('click', deleteSelected);
 
@@ -425,6 +426,8 @@ function updatePropsFromSelected() {
         document.getElementById('propContent').value = selectedElement.innerText;
         document.getElementById('propFontSize').value = parseInt(selectedElement.style.fontSize);
         document.getElementById('propColor').value = rgbToHex(selectedElement.style.color);
+    } else if (selectedElement.dataset.type === 'html') {
+        document.getElementById('propContent').value = selectedElement.innerHTML;
     }
 }
 
@@ -438,6 +441,8 @@ function updateSelectedFromProps() {
         selectedElement.innerText = document.getElementById('propContent').value;
         selectedElement.style.fontSize = document.getElementById('propFontSize').value + 'px';
         selectedElement.style.color = document.getElementById('propColor').value;
+    } else if (selectedElement.dataset.type === 'html') {
+        selectedElement.innerHTML = document.getElementById('propContent').value;
     }
 }
 
@@ -458,7 +463,7 @@ async function saveDesignerScene() {
     clone.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
 
     const html = clone.innerHTML;
-    const css = '.stream-element { position: absolute; white-space: nowrap; }'; // Basic CSS
+    const css = '.stream-element { position: absolute; }'; // Basic CSS
 
     const overlayData = {
         id: `scene_${Date.now()}`,
@@ -738,6 +743,22 @@ addElement = function (type, src) {
         el.style.color = '#ffffff';
         el.style.fontFamily = 'Arial, sans-serif';
         el.style.whiteSpace = 'nowrap';
+
+        designerCanvas.appendChild(el);
+        makeDraggable(el);
+        selectElement(el);
+        return;
+    }
+    else if (type === 'html') {
+        const el = document.createElement('div');
+        el.classList.add('stream-element');
+        el.style.left = '100px';
+        el.style.top = '100px';
+        el.style.position = 'absolute';
+        el.dataset.type = 'html';
+        el.innerHTML = '<div style="background:rgba(0,0,0,0.5); padding:10px; color:white; width:100%; height:100%;"><h3>HTML Overlay</h3><p>Edit content in properties</p></div>';
+        el.style.width = '300px';
+        el.style.height = '150px';
 
         designerCanvas.appendChild(el);
         makeDraggable(el);
