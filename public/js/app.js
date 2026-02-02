@@ -812,42 +812,40 @@ async function saveDesignerScene() {
     const html = clone.innerHTML;
     const css = '.stream-element { position: absolute; }'; // Basic CSS
 
+    // Capture JSON state
+    const elements = Array.from(document.querySelectorAll('.stream-element')).map(el => ({
+        type: el.dataset.type,
+        content: el.dataset.type === 'text' ? el.innerText : el.querySelector('img, video, iframe')?.src || '',
+        htmlContent: el.dataset.type === 'html' ? el.querySelector('.html-content')?.innerHTML : null,
+        style: {
+            left: el.style.left,
+            top: el.style.top,
+            width: el.style.width,
+            height: el.style.height,
+            color: el.style.color,
+            fontSize: el.style.fontSize,
+            zIndex: el.style.zIndex,
+            backgroundColor: el.style.backgroundColor
+        }
+    }));
+
     const overlayData = {
-        // Capture JSON state
-        const elements = Array.from(document.querySelectorAll('.stream-element')).map(el => ({
-            type: el.dataset.type,
-            content: el.dataset.type === 'text' ? el.innerText : el.querySelector('img, video, iframe')?.src || '', // Simplified
-            // For HTML/Embeds, we need the innerHTML or src
-            htmlContent: el.dataset.type === 'html' ? el.querySelector('.html-content')?.innerHTML : null,
-            style: {
-                left: el.style.left,
-                top: el.style.top,
-                width: el.style.width,
-                height: el.style.height,
-                color: el.style.color,
-                fontSize: el.style.fontSize,
-                zIndex: el.style.zIndex,
-                backgroundColor: el.style.backgroundColor
-            }
-        }));
+        id: currentEditingId || `scene_${Date.now()}`,
+        html: html,
+        css: css,
+        json: elements,
+        js: '// Visual Designer Scene'
+    };
 
-        const overlayData = {
-            id: currentEditingId || `scene_${Date.now()}`,
-            html: html,
-            css: css,
-            json: elements, // Save structured data
-            js: '// Visual Designer Scene'
-        };
-
-        try {
-            const response = await fetch('/api/overlay/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(overlayData) });
-            const data = await response.json();
-            if(data.success) {
-                showToast('Scene saved successfully', 'success');
-    loadOverlays();
-    currentEditingId = null; // Reset after save
-    streamDesignerModal.classList.remove('active');
-}
+    try {
+        const response = await fetch('/api/overlay/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(overlayData) });
+        const data = await response.json();
+        if (data.success) {
+            showToast('Scene saved successfully', 'success');
+            loadOverlays();
+            currentEditingId = null; // Reset after save
+            streamDesignerModal.classList.remove('active');
+        }
     } catch (e) { showToast('Failed to save scene', 'error'); }
 }
 
