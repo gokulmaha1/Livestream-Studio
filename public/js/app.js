@@ -687,61 +687,56 @@ function updateCanvasScale() {
     designerCanvas.style.transform = `scale(${designerScale})`;
 }
 
-// addElement moved to bottom with edit logic
+function addResizeHandles(el) {
+    ['nw', 'ne', 'sw', 'se'].forEach(pos => {
+        const handle = document.createElement('div');
+        handle.className = `resize-handle handle-${pos}`;
+        el.appendChild(handle);
 
-// Resize Handles
-['nw', 'ne', 'sw', 'se'].forEach(pos => {
-    const handle = document.createElement('div');
-    handle.className = `resize-handle handle-${pos}`;
-    el.appendChild(handle);
+        handle.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+            e.preventDefault(); // Prevent text selection
+            const startX = e.clientX;
+            const startY = e.clientY;
+            const startWidth = parseInt(el.style.width || el.offsetWidth);
+            const startHeight = parseInt(el.style.height || el.offsetHeight);
+            const startLeft = parseInt(el.style.left || 0);
+            const startTop = parseInt(el.style.top || 0);
 
-    handle.addEventListener('mousedown', (e) => {
-        e.stopPropagation();
-        e.preventDefault(); // Prevent text selection
-        const startX = e.clientX;
-        const startY = e.clientY;
-        const startWidth = parseInt(el.style.width || el.offsetWidth);
-        const startHeight = parseInt(el.style.height || el.offsetHeight);
-        const startLeft = parseInt(el.style.left || 0);
-        const startTop = parseInt(el.style.top || 0);
+            const resizeMove = (ev) => {
+                const dx = (ev.clientX - startX) / designerScale;
+                const dy = (ev.clientY - startY) / designerScale;
 
-        const resizeMove = (ev) => {
-            const dx = (ev.clientX - startX) / designerScale;
-            const dy = (ev.clientY - startY) / designerScale;
+                let newWidth = startWidth;
+                let newHeight = startHeight;
+                let newLeft = startLeft;
+                let newTop = startTop;
 
-            let newWidth = startWidth;
-            let newHeight = startHeight;
-            let newLeft = startLeft;
-            let newTop = startTop;
+                if (pos.includes('e')) newWidth = startWidth + dx;
+                if (pos.includes('w')) { newWidth = startWidth - dx; newLeft = startLeft + dx; }
+                if (pos.includes('s')) newHeight = startHeight + dy;
+                if (pos.includes('n')) { newHeight = startHeight - dy; newTop = startTop + dy; }
 
-            if (pos.includes('e')) newWidth = startWidth + dx;
-            if (pos.includes('w')) { newWidth = startWidth - dx; newLeft = startLeft + dx; }
-            if (pos.includes('s')) newHeight = startHeight + dy;
-            if (pos.includes('n')) { newHeight = startHeight - dy; newTop = startTop + dy; }
+                if (newWidth > 20) {
+                    el.style.width = `${newWidth}px`;
+                    if (pos.includes('w')) el.style.left = `${newLeft}px`;
+                }
+                if (newHeight > 20) {
+                    el.style.height = `${newHeight}px`;
+                    if (pos.includes('n')) el.style.top = `${newTop}px`;
+                }
+                updatePropsFromSelected();
+            };
 
-            if (newWidth > 20) {
-                el.style.width = `${newWidth}px`;
-                if (pos.includes('w')) el.style.left = `${newLeft}px`;
-            }
-            if (newHeight > 20) {
-                el.style.height = `${newHeight}px`;
-                if (pos.includes('n')) el.style.top = `${newTop}px`;
-            }
-            updatePropsFromSelected();
-        };
+            const resizeUp = () => {
+                document.removeEventListener('mousemove', resizeMove);
+                document.removeEventListener('mouseup', resizeUp);
+            };
 
-        const resizeUp = () => {
-            document.removeEventListener('mousemove', resizeMove);
-            document.removeEventListener('mouseup', resizeUp);
-        };
-
-        document.addEventListener('mousemove', resizeMove);
-        document.addEventListener('mouseup', resizeUp);
+            document.addEventListener('mousemove', resizeMove);
+            document.addEventListener('mouseup', resizeUp);
+        });
     });
-});
-
-designerCanvas.appendChild(el);
-selectElement(el);
 }
 
 function selectElement(el) {
