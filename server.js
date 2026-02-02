@@ -200,156 +200,154 @@ class StreamSession {
       // Get Stream from Puppeteer (Audio + Video)
       this.log('Capturing stream with Audio...');
       this.stream = await getStream(this.page, {
-        this.log('Capturing stream with Audio...');
-        this.stream = await getStream(page, {
-          audio: true,
-          video: true,
-          frameSize: 1000,
-          mimeType: 'video/webm'
-        });
+        audio: true,
+        video: true,
+        frameSize: 1000,
+        mimeType: 'video/webm'
+      });
 
-        // Start FFmpeg
-        const args = this.buildFFmpegArgs();
-        this.log(`Spawning FFmpeg from: ${ffmpegPath}`);
-        this.ffmpegProcess = spawn(ffmpegPath, args);
+      // Start FFmpeg
+      const args = this.buildFFmpegArgs();
+      this.log(`Spawning FFmpeg from: ${ffmpegPath}`);
+      this.ffmpegProcess = spawn(ffmpegPath, args);
 
-        // Pipe Puppeteer stream to FFmpeg
-        this.stream.pipe(this.ffmpegProcess.stdin);
+      // Pipe Puppeteer stream to FFmpeg
+      this.stream.pipe(this.ffmpegProcess.stdin);
 
-        this.status = 'streaming';
-        this.startTime = Date.now();
-        this.setupFFmpegHandlers();
-        this.startPreview(); // Start generating preview frames
+      this.status = 'streaming';
+      this.startTime = Date.now();
+      this.setupFFmpegHandlers();
+      this.startPreview(); // Start generating preview frames
 
-        // Clean up browser on ffmpeg exit
-        this.ffmpegProcess.on('exit', (code) => {
-          if (code !== 0) {
-            this.log(`FFmpeg exited with code ${code}`, 'error');
-          }
-          this.stop();
-        });
-
-      } catch (error) {
-        this.log(`Start error: ${error.message}`, 'error');
+      // Clean up browser on ffmpeg exit
+      this.ffmpegProcess.on('exit', (code) => {
+        if (code !== 0) {
+          this.log(`FFmpeg exited with code ${code}`, 'error');
+        }
         this.stop();
-        throw error;
-      }
+      });
 
-      return this;
+    } catch (error) {
+      this.log(`Start error: ${error.message}`, 'error');
+      this.stop();
+      throw error;
     }
+
+    return this;
+  }
 
   buildFFmpegArgs() {
-      const {
-        streamKey,
-        resolution = '1920x1080',
-        framerate = 30,
-        bitrate = '4500k',
-        preset = 'veryfast'
-      } = this.config;
+    const {
+      streamKey,
+      resolution = '1920x1080',
+      framerate = 30,
+      bitrate = '4500k',
+      preset = 'veryfast'
+    } = this.config;
 
-      // Puppeteer stream output (webm) -> FFmpeg Input
-      return [
-        '-re',
-        '-i', '-', // Input from stdin (pipe)
+    // Puppeteer stream output (webm) -> FFmpeg Input
+    return [
+      '-re',
+      '-i', '-', // Input from stdin (pipe)
 
-        // Input decoding (WebM/VP8/VP9 from puppeteer-stream)
-        '-f', 'webm',
-        '-vcodec', 'libvpx', // Ensure decoder matches
+      // Input decoding (WebM/VP8/VP9 from puppeteer-stream)
+      '-f', 'webm',
+      '-vcodec', 'libvpx', // Ensure decoder matches
 
-        // Transcode to YouTube settings
-        '-c:v', 'libx264',
-        '-preset', preset,
-        '-tune', 'zerolatency',
-        '-profile:v', 'high',
-        '-b:v', bitrate,
-        '-maxrate', bitrate,
-        '-bufsize', String(parseInt(bitrate) * 2),
-        '-pix_fmt', 'yuv420p',
-        '-g', String(framerate * 2),
-        '-r', String(framerate),
+      // Transcode to YouTube settings
+      '-c:v', 'libx264',
+      '-preset', preset,
+      '-tune', 'zerolatency',
+      '-profile:v', 'high',
+      '-b:v', bitrate,
+      '-maxrate', bitrate,
+      '-bufsize', String(parseInt(bitrate) * 2),
+      '-pix_fmt', 'yuv420p',
+      '-g', String(framerate * 2),
+      '-r', String(framerate),
 
-        '-c:a', 'aac',
-        '-b:a', '128k',
-        '-ar', '44100',
-        '-ac', '2',
+      '-c:a', 'aac',
+      '-b:a', '128k',
+      '-ar', '44100',
+      '-ac', '2',
 
-        '-f', 'flv',
-        `rtmp://a.rtmp.youtube.com/live2/${streamKey}`
-      ];
-    }
+      '-f', 'flv',
+      `rtmp://a.rtmp.youtube.com/live2/${streamKey}`
+    ];
+  }
 
-    setupFFmpegHandlers() {
-      if (!this.ffmpegProcess) return;
+  setupFFmpegHandlers() {
+    if (!this.ffmpegProcess) return;
 
-      this.ffmpegProcess.stderr.on('data', (data) => {
-        const output = data.toString();
-        const fpsMatch = output.match(/fps=\s*(\d+)/);
-        const bitrateMatch = output.match(/bitrate=\s*([\d.]+)kbits\/s/);
-        if (fpsMatch) this.stats.fps = parseInt(fpsMatch[1]);
-        if (bitrateMatch) this.stats.bitrate = parseFloat(bitrateMatch[1]);
-        io.to(this.id).emit('stream-stats', this.stats);
-      });
-    }
+    this.ffmpegProcess.stderr.on('data', (data) => {
+      const output = data.toString();
+      const fpsMatch = output.match(/fps=\s*(\d+)/);
+      const bitrateMatch = output.match(/bitrate=\s*([\d.]+)kbits\/s/);
+      if (fpsMatch) this.stats.fps = parseInt(fpsMatch[1]);
+      if (bitrateMatch) this.stats.bitrate = parseFloat(bitrateMatch[1]);
+      io.to(this.id).emit('stream-stats', this.stats);
+    });
+  }
 
   async stop() {
-      this.status = 'stopped';
-      this.stopPreview();
+    this.status = 'stopped';
+    this.stopPreview();
 
-      if (this.stream) {
-        this.stream.destroy();
-        this.stream = null;
-      }
-
-      if (this.ffmpegProcess) {
-        this.ffmpegProcess.kill();
-        this.ffmpegProcess = null;
-      }
-
-      if (this.browser) {
-        await this.browser.close();
-        this.browser = null;
-      }
-
-      io.to(this.id).emit('stream-ended', { status: 'stopped' });
+    if (this.stream) {
+      this.stream.destroy();
+      this.stream = null;
     }
 
-    startPreview() {
-      if (this.previewInterval) clearInterval(this.previewInterval);
-      // Take a screenshot every 2 seconds for preview
-      this.previewInterval = setInterval(async () => {
-        if (this.page && this.status === 'streaming') {
-          try {
-            const screenshot = await this.page.screenshot({
-              type: 'jpeg',
-              quality: 50,
-              encoding: 'base64',
-              clip: { x: 0, y: 0, width: 1920, height: 1080 } // Ensure full frame
-            });
-            io.emit('preview-frame', screenshot);
-          } catch (e) {
-            // Ignore errors (page might be closing)
-          }
+    if (this.ffmpegProcess) {
+      this.ffmpegProcess.kill();
+      this.ffmpegProcess = null;
+    }
+
+    if (this.browser) {
+      await this.browser.close();
+      this.browser = null;
+    }
+
+    io.to(this.id).emit('stream-ended', { status: 'stopped' });
+  }
+
+  startPreview() {
+    if (this.previewInterval) clearInterval(this.previewInterval);
+    // Take a screenshot every 2 seconds for preview
+    this.previewInterval = setInterval(async () => {
+      if (this.page && this.status === 'streaming') {
+        try {
+          const screenshot = await this.page.screenshot({
+            type: 'jpeg',
+            quality: 50,
+            encoding: 'base64',
+            clip: { x: 0, y: 0, width: 1920, height: 1080 } // Ensure full frame
+          });
+          io.emit('preview-frame', screenshot);
+        } catch (e) {
+          // Ignore errors (page might be closing)
         }
-      }, 2000);
-    }
-
-    stopPreview() {
-      if (this.previewInterval) {
-        clearInterval(this.previewInterval);
-        this.previewInterval = null;
       }
-    }
+    }, 2000);
+  }
 
-    getStatus() {
-      return {
-        id: this.id,
-        status: this.status,
-        uptime: this.startTime ? Date.now() - this.startTime : 0,
-        stats: this.stats,
-        config: this.config
-      };
+  stopPreview() {
+    if (this.previewInterval) {
+      clearInterval(this.previewInterval);
+      this.previewInterval = null;
     }
   }
+
+  getStatus() {
+    return {
+      id: this.id,
+      status: this.status,
+      uptime: this.startTime ? Date.now() - this.startTime : 0,
+      stats: this.stats,
+      config: this.config
+    };
+  }
+}
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
