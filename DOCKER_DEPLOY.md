@@ -56,12 +56,34 @@ Upload your project folder (excluding `node_modules`) to the VPS, navigate to it
     ```bash
     docker compose ps
     ```
+    docker compose ps
+    ```
 2.  Your app should be live at:
     `http://your_vps_ip:3000`
 
 ---
 
-## Step 4: Important Notes
+## Step 4: Configure Authentication (Secure your Dashboard)
+
+Since your dashboard is public, you **must** set a password.
+
+1.  Edit your `.env` file on the VPS:
+    ```bash
+    nano .env
+    ```
+2.  Add this line:
+    ```env
+    ADMIN_PASSWORD=your_secure_password
+    ```
+3.  Restart to apply:
+    ```bash
+    docker compose down
+    docker compose up -d
+    ```
+
+---
+
+## Step 5: Important Notes
 
 ### 1. Persistent Data
 The `docker-compose.yml` file is configured to save your data (overlays and uploaded media) to the host machine.
