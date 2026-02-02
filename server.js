@@ -193,12 +193,19 @@ class StreamSession {
           '--start-fullscreen',
           '--kiosk', // Force kiosk mode
           '--autoplay-policy=no-user-gesture-required',
-          '--disable-notifications'
+          '--disable-notifications',
+          '--disable-web-security',
+          '--disable-features=IsolateOrigins,site-per-process'
         ]
       });
 
       this.page = await this.browser.newPage();
       await this.page.setViewport({ width: 1920, height: 1080 });
+
+      // Debugging: Log browser console to server output
+      this.page.on('console', msg => {
+        console.log(`[Browser Console] ${msg.type().toUpperCase()}: ${msg.text()}`);
+      });
 
       this.log('Navigating to compositor...');
       // Use 127.0.0.1 to avoid ipv6 issues in Docker
